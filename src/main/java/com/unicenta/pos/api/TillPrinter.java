@@ -8,6 +8,8 @@ import com.unicenta.pos.printer.DevicePrinterNull;
 import com.unicenta.pos.printer.DeviceTicket;
 import com.unicenta.pos.printer.TicketParser;
 import com.unicenta.pos.printer.escpos.PrinterWritterSocket;
+import com.unicenta.pos.printer.escpos.DevicePrinterESCPOS;
+import com.unicenta.pos.printer.PrintErrors;
 import com.unicenta.pos.printer.screen.DevicePrinterPanel;
 import com.unicenta.pos.scripting.ScriptEngine;
 import com.unicenta.pos.scripting.ScriptFactory;
@@ -32,10 +34,11 @@ import javax.swing.SwingUtilities;
  */
 public final class TillPrinter implements MobilePrinter {
 
-    static final String KITCHEN_RESOURCE = "Printer.TicketKitchen";
     static final String BILL_RESOURCE = "Printer.TicketBill";
     private static final Pattern TICKET_PRINTER = Pattern.compile("<ticket(?:\\s+printer\\s*=\\s*\"([^\"]*)\")?");
     private static final int REACH_TIMEOUT_MS = 2000;
+    /** Attente maximale de la fin d'envoi a une imprimante ESC/POS. */
+    private static final int JOB_TIMEOUT_MS = 15000;
 
     private final DeviceTicket devices;
     private final TicketParser parser;
@@ -83,8 +86,10 @@ public final class TillPrinter implements MobilePrinter {
         }
         boolean allScreens = true;
         StringBuilder desc = new StringBuilder();
+        final java.util.List<DevicePrinter> targets = new java.util.ArrayList<>();
         for (String id : ids) {
             DevicePrinter p = devices.getDevicePrinter(id);
+            targets.add(p);
             if (p == null || p instanceof DevicePrinterNull) {
                 throw new NotPrintedException("Imprimante n" + (char) 0xB0 + id + " non configuree ("
                         + key(id) + "). Rien n'a ete imprime.", null);
@@ -121,16 +126,26 @@ public final class TillPrinter implements MobilePrinter {
 
             @Override
             public void print() throws Exception {
+                // ESC/POS : debut du suivi du resultat (les donnees partent en arriere-plan)
+                for (DevicePrinter p : targets) {
+                    if (p instanceof DevicePrinterESCPOS) {
+                        ((DevicePrinterESCPOS) p).getWritter().beginJob();
+                    }
+                }
                 // Peripheriques de la caisse (dont l'affichage ecran) utilises
                 // depuis le fil de l'interface, comme a la caisse.
                 final Exception[] failure = new Exception[1];
+                final java.util.List<java.util.List<PrintErrors.Failure>> driver = new java.util.ArrayList<>();
                 Runnable job = new Runnable() {
                     @Override
                     public void run() {
+                        PrintErrors.begin();
                         try {
                             parser.printTicket(xml, ticket);
                         } catch (Exception e) {
                             failure[0] = e;
+                        } finally {
+                            driver.add(PrintErrors.end());
                         }
                     }
                 };
@@ -144,7 +159,44 @@ public final class TillPrinter implements MobilePrinter {
                     }
                 }
                 if (failure[0] != null) {
-                    throw failure[0];
+                    throw failure[0];   // erreur pendant la mise en page / l'envoi : incertain
+                }
+                // Pilote Windows : travail refuse (rien n'a ete imprime sur cette imprimante)
+                int driverFailures = driver.isEmpty() ? 0 : driver.get(0).size();
+                Exception lastDriver = driverFailures == 0 ? null : driver.get(0).get(driverFailures - 1).error;
+                // ESC/POS : attente de la fin reelle de l'envoi, erreurs rendues ici
+                int escposFailuresNothingSent = 0;
+                Exception uncertain = null;
+                Exception lastEscpos = null;
+                for (DevicePrinter p : targets) {
+                    if (p instanceof DevicePrinterESCPOS) {
+                        try {
+                            ((DevicePrinterESCPOS) p).getWritter().endJob(JOB_TIMEOUT_MS);
+                        } catch (com.unicenta.pos.printer.escpos.PrinterWritter.JobException e) {
+                            lastEscpos = e;
+                            if (e.isNothingSent()) {
+                                escposFailuresNothingSent++;
+                            } else {
+                                uncertain = e;
+                            }
+                        } catch (java.util.concurrent.TimeoutException e) {
+                            uncertain = new Exception("L'imprimante n'a pas fini de recevoir le bon a temps.", e);
+                        }
+                    }
+                }
+                if (uncertain != null) {
+                    throw uncertain;
+                }
+                int failed = driverFailures + escposFailuresNothingSent;
+                if (failed > 0) {
+                    Exception cause = lastEscpos != null ? lastEscpos : lastDriver;
+                    String msg = cause == null ? "erreur d'impression" : cause.getMessage();
+                    if (failed >= targets.size()) {
+                        // aucune imprimante n'a recu le bon : echec certain
+                        throw new NothingPrintedException(msg, cause);
+                    }
+                    // une partie des imprimantes a recu le bon : resultat a verifier
+                    throw new Exception("Une partie du bon n'a pas pu etre imprimee : " + msg, cause);
                 }
             }
         };

@@ -29,7 +29,7 @@ public final class ApiSessions {
     }
 
     /** Session d'un serveur connecte depuis un telephone. */
-    public static final class ApiSession {
+    public static final class ApiSession implements KitchenService.Actor {
         private final String token;
         private final String userId;
         private final String userName;
@@ -70,10 +70,12 @@ public final class ApiSessions {
             return token;
         }
 
+        @Override
         public String getUserId() {
             return userId;
         }
 
+        @Override
         public String getUserName() {
             return userName;
         }
@@ -86,8 +88,14 @@ public final class ApiSessions {
             return permissions;
         }
 
+        @Override
         public boolean hasPermission(String p) {
             return permissions.contains(p);
+        }
+
+        @Override
+        public com.unicenta.pos.sales.restaurant.TableLocks.Source getSource() {
+            return com.unicenta.pos.sales.restaurant.TableLocks.Source.MOBILE;
         }
 
         public long getExpiresAt() {

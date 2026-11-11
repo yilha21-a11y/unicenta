@@ -302,12 +302,12 @@ public class OrderNumberIntegrationTest {
 
         // envoi cuisine : le bon porte le meme numero
         int printed = printer.printed.size();
-        assertEquals(200, api.call("POST", "/tables/8/kitchen/send", token, Json.write(Json.obj("sendId", rid()))).status);
+        assertEquals(200, api.call("POST", "/tables/8/kitchen/send", token, Json.write(Json.obj("sendId", rid(), "orderId", api.currentOrderId(token, "8")))).status);
         assertEquals(String.valueOf(n), printer.printed.get(printed).getProperty(OrderNumbers.P_NUMBER));
         // ajout puis 2e bon cuisine
         o = api.getOrder(token, "8").order();
         api.changes(token, "8", rid(), version(o), add("p-soupe", 1, null));
-        assertEquals(200, api.call("POST", "/tables/8/kitchen/send", token, Json.write(Json.obj("sendId", rid()))).status);
+        assertEquals(200, api.call("POST", "/tables/8/kitchen/send", token, Json.write(Json.obj("sendId", rid(), "orderId", api.currentOrderId(token, "8")))).status);
         assertEquals(String.valueOf(n), printer.printed.get(printer.printed.size() - 1).getProperty(OrderNumbers.P_NUMBER));
         // addition
         assertEquals(200, api.call("POST", "/tables/8/bill/print", token, Json.write(Json.obj("printId", rid()))).status);
@@ -348,11 +348,11 @@ public class OrderNumberIntegrationTest {
             assertNull(OrderNumbers.numberOf(empty));
             assertEquals(c, counter());
             empty.addLine(new TicketLineInfo("Plat", "001", "0", 1.0, 12.0, tax10));
-            tillStore.update("9", empty, 1, "Marie", "caisse");       // premiere sauvegarde avec article
+            tillStore.update("9", empty, empty.getId(), 1, "Marie", "caisse");       // premiere sauvegarde avec article
             int n = OrderNumbers.numberOf(empty);
             assertEquals(OrderNumbers.next(c), n);
             empty.addLine(new TicketLineInfo("Dessert", "001", "0", 1.0, 6.0, tax10));
-            tillStore.update("9", empty, 2, "Marie", "caisse");
+            tillStore.update("9", empty, empty.getId(), 2, "Marie", "caisse");
             assertEquals("numero conserve", Integer.valueOf(n), OrderNumbers.numberOf(tillStore.load("9").getTicket()));
 
             // creation refusee (table occupee) : le numero n'est pas consomme

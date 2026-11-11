@@ -115,11 +115,17 @@ final class MobileBillService {
             try {
                 synchronized (data) {
                     TableTicketStore.Snapshot snap = store.load(tableId);
+                    Object oid = body.get("orderId");
+                    if (snap != null && oid instanceof String && !oid.equals(snap.getOrderId())) {
+                        throw new ApiServer.ApiError(409, "order_replaced", "La commande affichee pour " + tableName
+                                + " a ete encaissee ou annulee : une autre commande est sur cette table. "
+                                + "Rien n'a ete imprime.", Json.obj("order", orders.orderJson(tableId, tableName, snap)));
+                    }
                     if (snap == null || snap.getTicket().getLinesCount() == 0) {
                         throw new ApiServer.ApiError(409, "empty_order", "Aucun article sur " + tableName
                                 + " : pas d'addition a imprimer.");
                     }
-                    TicketInfo copy = MobileKitchenService.escapedCopy(snap.getTicket(), user);
+                    TicketInfo copy = KitchenService.escapedCopy(snap.getTicket(), user);
                     @SuppressWarnings("unchecked")
                     TaxesLogic taxes = new TaxesLogic(data.getDataLogicSales().getTaxList().list());
                     try {
@@ -130,7 +136,7 @@ final class MobileBillService {
                     List<Map<String, Object>> billTaxes = new ArrayList<>();
                     for (TicketTaxInfo t : copy.getTaxLines()) {
                         if (t.getTax() != 0.0) {
-                            billTaxes.add(Json.obj("name", MobileKitchenService.xml(t.getTaxInfo().getName()),
+                            billTaxes.add(Json.obj("name", KitchenService.xml(t.getTaxInfo().getName()),
                                     "base", t.printSubTotal(), "amount", t.printTax()));
                         }
                     }
@@ -139,7 +145,7 @@ final class MobileBillService {
                     vars.put("printedat", new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date()));
                     total = Formats.CURRENCY.formatValue(copy.getTotal());
                     try {
-                        prepared = printer.prepare(copy, MobileKitchenService.xml(tableName), template(), vars);
+                        prepared = printer.prepare(copy, KitchenService.xml(tableName), template(), vars);
                     } catch (MobilePrinter.NotPrintedException e) {
                         throw new ApiServer.ApiError(503, "printer_not_ready", e.getMessage());
                     }

@@ -40,7 +40,7 @@ public class ApiKitchenIntegrationTest {
 
     /** Imprimante simulee. */
     static final class FakePrinter implements MobilePrinter {
-        volatile String mode = "envoye";   // envoye | confirme | erreur | bloquee | pas_prete
+        volatile String mode = "envoye";   // envoye | confirme | erreur | echec | bloquee | pas_prete
         final List<TicketInfo> printed = Collections.synchronizedList(new ArrayList<TicketInfo>());
         volatile String lastTemplate;
         volatile java.util.Map<String, Object> lastVariables;
@@ -69,6 +69,10 @@ public class ApiKitchenIntegrationTest {
                 public void print() throws Exception {
                     if ("bloquee".equals(m)) {
                         Thread.sleep(3000);
+                    }
+                    if ("echec".equals(m)) {
+                        // aucune imprimante n'a recu le bon (connexion impossible, pilote en erreur)
+                        throw new NothingPrintedException("connexion refusee par 192.0.2.10:9100", null);
                     }
                     printed.add(ticket);        // le bon a pu partir...
                     if ("erreur".equals(m)) {
@@ -159,12 +163,13 @@ public class ApiKitchenIntegrationTest {
     }
 
     private static ApiTestClient.Response send(String table, String sendId) throws Exception {
-        return api.call("POST", "/tables/" + table + "/kitchen/send", token, Json.write(Json.obj("sendId", sendId)));
+        return api.call("POST", "/tables/" + table + "/kitchen/send", token,
+                Json.write(Json.obj("sendId", sendId, "orderId", api.currentOrderId(token, table))));
     }
 
     private static ApiTestClient.Response resolve(String table, String sendId, String action) throws Exception {
         return api.call("POST", "/tables/" + table + "/kitchen/" + sendId + "/resolve", token,
-                Json.write(Json.obj("action", action)));
+                Json.write(Json.obj("action", action, "orderId", api.currentOrderId(token, table))));
     }
 
     private static Map<String, Object> order(String table) throws Exception {
@@ -331,9 +336,10 @@ public class ApiKitchenIntegrationTest {
         } finally {
             locks.releaseTill("7");
         }
-        ApiTestClient.Response f = api.call("POST", "/tables/7/kitchen/send", minToken, Json.write(Json.obj("sendId", id())));
+        ApiTestClient.Response f = api.call("POST", "/tables/7/kitchen/send", minToken,
+                Json.write(Json.obj("sendId", id(), "orderId", api.currentOrderId(token, "7"))));
         assertEquals(403, f.status);
-        assertTrue(f.errorMessage().contains("sales.PrintKitchen"));
+        assertTrue(f.errorMessage(), f.errorMessage().contains("envoi en cuisine"));
         assertEquals(count, printer.printed.size());
         assertEquals(400, api.call("POST", "/tables/7/kitchen/send", token, "{\"sendId\":\"x\"}").status);
     }
@@ -357,7 +363,7 @@ public class ApiKitchenIntegrationTest {
         s.getTicket().getLine(0).setProperty("kitchen.sendId", "envoi-interrompu-01");
         s.getTicket().setProperty("kitchen.sends",
                 "[{\"id\":\"envoi-interrompu-01\",\"status\":\"en_cours\",\"at\":1,\"by\":\"Serveur Test\",\"items\":[]}]");
-        tillStore.update("9", s.getTicket(), s.getVersion(), "test", "test");
+        tillStore.update("9", s.getTicket(), s.getTicket().getId(), s.getVersion(), "test", "test");
 
         Map<String, Object> o = order("9");
         assertEquals("a_verifier", line(o, 0).get("kitchenStatus"));
@@ -376,13 +382,13 @@ public class ApiKitchenIntegrationTest {
         com.unicenta.pos.forms.DataLogicSystem dls = new com.unicenta.pos.forms.DataLogicSystem();
         dls.init(tillSession);
         TillPrinter real = new TillPrinter(devices, new TicketParser(devices, dls), c);
-        String template = dls.getResourceAsXML(TillPrinter.KITCHEN_RESOURCE);
+        String template = dls.getResourceAsXML(KitchenService.KITCHEN_RESOURCE);
 
         TicketInfo t = new TicketInfo();
         TicketLineInfo l = new TicketLineInfo("Steak frites", "001", "0", 1.0, 14.0, null);
         l.setProperty("product.printer", "2");
         l.setProperty("sendstatus", "No");
-        l.setProperty("notes", MobileKitchenService.xml("<saignant> & sans sel"));
+        l.setProperty("notes", KitchenService.xml("<saignant> & sans sel"));
         t.addLine(l);
         MobilePrinter.Prepared p = real.prepare(t, "Table 1", template, null);
         assertTrue("l'ecran confirme l'impression", p.confirmsPrinting());
@@ -398,5 +404,45 @@ public class ApiKitchenIntegrationTest {
         } catch (MobilePrinter.NotPrintedException expected) {
             assertTrue(expected.getMessage().contains("non configuree"));
         }
+    }
+
+    // ------------------------------------------------------------------ OLPOS 5
+
+    @Test
+    public void echecCertainLesLignesRestentAEnvoyer() throws Exception {
+        assertEquals(200, api.changes(token, "14", id(), 0, add("p-poisson", 1, null)).status);
+        printer.mode = "echec";
+        ApiTestClient.Response r = send("14", id());
+        assertEquals(200, r.status);
+        assertEquals("echec", statusOf(r));
+        assertTrue(r.body, r.body.contains("n'a PAS ete imprime"));
+        // rien n'est sorti : la ligne redevient "a envoyer" (pas "a verifier")
+        assertEquals(java.util.Arrays.asList("a_envoyer"), kitchenStatuses(r.order()));
+        // nouvel envoi possible, sans DUPLICATA
+        printer.mode = "envoye";
+        ApiTestClient.Response r2 = send("14", id());
+        assertEquals("envoye", statusOf(r2));
+        assertEquals(java.util.Arrays.asList("envoye"), kitchenStatuses(r2.order()));
+    }
+
+    @Test
+    public void ancienneDemandeNImprimeJamaisLaNouvelleCommandeDeLaTable() throws Exception {
+        assertEquals(200, api.changes(token, "15", id(), 0, add("p-steak", 1, null)).status);
+        String ancienne = api.currentOrderId(token, "15");
+        // la caisse encaisse la table, puis une NOUVELLE commande est ouverte sur la meme table
+        tillStore.delete("15", ancienne, tillStore.load("15").getVersion());
+        assertEquals(200, api.changes(token, "15", id(), 0, add("p-salade", 1, null)).status);
+        String nouvelle = api.currentOrderId(token, "15");
+        assertTrue(!ancienne.equals(nouvelle));
+        int count = printer.printed.size();
+        ApiTestClient.Response r = api.call("POST", "/tables/15/kitchen/send", token,
+                Json.write(Json.obj("sendId", id(), "orderId", ancienne)));
+        assertEquals(409, r.status);
+        assertEquals("order_replaced", r.errorCode());
+        assertEquals("rien d'imprime", count, printer.printed.size());
+        assertEquals(java.util.Arrays.asList("a_envoyer"), kitchenStatuses(order("15")));
+        // sans identifiant de commande : refuse
+        assertEquals(400, api.call("POST", "/tables/15/kitchen/send", token,
+                Json.write(Json.obj("sendId", id()))).status);
     }
 }

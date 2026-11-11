@@ -21,6 +21,7 @@ import java.util.logging.Logger;
  * <ul>
  *   <li>{@code confirme} : l'imprimante confirme (affichage ecran) ;</li>
  *   <li>{@code envoye} : transmis sans erreur, sans confirmation materielle ;</li>
+ *   <li>{@code echec} : rien n'a atteint l'imprimante (certain) ;</li>
  *   <li>{@code a_verifier} : erreur ou delai depasse PENDANT l'impression ;</li>
  *   <li>{@code non_imprime} : l'impression n'a jamais commence (imprimante
  *       occupee par un bon bloque) ; elle est annulee, rien ne sortira.</li>
@@ -90,6 +91,17 @@ final class PrintRunner {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return new Outcome("a_verifier", "Impression interrompue : verifiez si " + what + " est sorti(e).");
+        } catch (java.util.concurrent.ExecutionException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            if (cause instanceof MobilePrinter.NothingPrintedException) {
+                // certain : rien n'a atteint l'imprimante
+                LOG.log(Level.WARNING, "Echec d'impression : " + what, cause);
+                return new Outcome("echec", "Echec : " + what + " n'a PAS ete imprime(e) (" + cause.getMessage()
+                        + "). Verifiez l'imprimante puis recommencez.");
+            }
+            LOG.log(Level.WARNING, "Impression incertaine : " + what, cause);
+            return new Outcome("a_verifier", "Erreur pendant l'impression (" + cause.getMessage() + ") : verifiez si "
+                    + what + " est sorti(e). Rien ne sera reimprime automatiquement.");
         } catch (Exception e) {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             LOG.log(Level.WARNING, "Impression incertaine : " + what, cause);

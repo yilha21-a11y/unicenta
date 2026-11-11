@@ -26,6 +26,19 @@ public interface MobilePrinter {
         }
     }
 
+    /**
+     * Erreur PENDANT {@link Prepared#print()} mais certaine : aucune imprimante
+     * n'a recu le bon (connexion impossible, travail refuse par le pilote).
+     * Rien n'est sorti : l'envoi peut etre refait sans risque de doublon.
+     */
+    class NothingPrintedException extends Exception {
+        private static final long serialVersionUID = 1L;
+
+        public NothingPrintedException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
     /** Bon pret a imprimer. */
     interface Prepared {
         /** true si l'imprimante permet de confirmer l'impression (ex. affichage a l'ecran). */

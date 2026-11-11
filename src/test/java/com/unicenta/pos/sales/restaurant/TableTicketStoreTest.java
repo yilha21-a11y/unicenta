@@ -63,12 +63,12 @@ public class TableTicketStoreTest {
         assertEquals(1, s.getVersion());
         assertEquals("Marie", s.getUpdatedBy());
         s.getTicket().addLine(new TicketLineInfo("Cafe", "001", "0", 1.0, 2.0, null));
-        assertEquals(2, storeB.update("1", s.getTicket(), 1, "Paul", "mobile"));
+        assertEquals(2, storeB.update("1", s.getTicket(), s.getTicket().getId(), 1, "Paul", "mobile"));
         TableTicketStore.Snapshot s2 = storeA.load("1");
         assertEquals(2, s2.getVersion());
         assertEquals(2, s2.getTicket().getLinesCount());
         assertEquals("mobile", s2.getUpdatedSource());
-        storeA.delete("1", 2);
+        storeA.delete("1", storeA.load("1").getOrderId(), 2);
         assertNull(storeB.load("1"));
     }
 
@@ -78,11 +78,11 @@ public class TableTicketStoreTest {
         TableTicketStore.Snapshot vueA = storeA.load("2");   // A lit la v1
         TableTicketStore.Snapshot vueB = storeB.load("2");   // B lit la v1
         vueB.getTicket().addLine(new TicketLineInfo("Vin", "001", "0", 1.0, 5.0, null));
-        storeB.update("2", vueB.getTicket(), 1, "Paul", "mobile");   // B ecrit la v2
+        storeB.update("2", vueB.getTicket(), vueB.getTicket().getId(), 1, "Paul", "mobile");   // B ecrit la v2
 
         vueA.getTicket().removeLine(0);
         try {
-            storeA.update("2", vueA.getTicket(), 1, "Marie", "caisse");
+            storeA.update("2", vueA.getTicket(), vueA.getTicket().getId(), 1, "Marie", "caisse");
             fail("A ne doit pas ecraser la modification de B");
         } catch (OrderConflictException e) {
             assertEquals(1, e.getExpectedVersion());
@@ -110,9 +110,9 @@ public class TableTicketStoreTest {
     public void suppressionApresModificationAilleursRefusee() throws Exception {
         storeA.create("4", ticketAvec("The"), "Marie", "caisse");
         TableTicketStore.Snapshot s = storeB.load("4");
-        storeB.update("4", s.getTicket(), 1, "Paul", "mobile");
+        storeB.update("4", s.getTicket(), s.getTicket().getId(), 1, "Paul", "mobile");
         try {
-            storeA.delete("4", 1);
+            storeA.delete("4", storeA.load("4").getOrderId(), 1);
             fail("suppression d'une commande modifiee ailleurs");
         } catch (OrderConflictException e) {
             assertNotNull(storeA.load("4"));
@@ -123,9 +123,9 @@ public class TableTicketStoreTest {
     public void modificationDUneCommandeSupprimee() throws Exception {
         storeA.create("5", ticketAvec("Eau"), "Marie", "caisse");
         TableTicketStore.Snapshot s = storeB.load("5");
-        storeA.delete("5", 1);
+        storeA.delete("5", storeA.load("5").getOrderId(), 1);
         try {
-            storeB.update("5", s.getTicket(), 1, "Paul", "mobile");
+            storeB.update("5", s.getTicket(), s.getTicket().getId(), 1, "Paul", "mobile");
             fail();
         } catch (OrderConflictException e) {
             assertNull(e.getCurrent());
@@ -141,7 +141,7 @@ public class TableTicketStoreTest {
         dl.insertSharedTicket("6", ticketAvec("Ancien"), 0);
         TableTicketStore.Snapshot s = storeB.load("6");
         assertEquals(1, s.getVersion());
-        assertEquals(2, storeB.update("6", s.getTicket(), 1, "Paul", "mobile"));
+        assertEquals(2, storeB.update("6", s.getTicket(), s.getTicket().getId(), 1, "Paul", "mobile"));
     }
 
     @Test
@@ -163,7 +163,7 @@ public class TableTicketStoreTest {
                     try {
                         go.await();
                         snaps[n].getTicket().addLine(new TicketLineInfo("Ajout" + n, "001", "0", 1.0, 1.0, null));
-                        stores[n].update("7", snaps[n].getTicket(), 1, "poste" + n, "test");
+                        stores[n].update("7", snaps[n].getTicket(), snaps[n].getTicket().getId(), 1, "poste" + n, "test");
                         ok.incrementAndGet();
                     } catch (OrderConflictException e) {
                         conflits.incrementAndGet();

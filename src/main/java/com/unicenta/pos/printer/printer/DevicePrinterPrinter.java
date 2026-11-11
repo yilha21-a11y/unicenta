@@ -226,6 +226,7 @@ public class DevicePrinterPrinter implements DevicePrinter {
         String[] printers = ReportUtils.getPrintNames();
         if (printers.length == 0) {
           log.error(AppLocal.getIntString("message.noprinters"));
+          com.unicenta.pos.printer.PrintErrors.report(new PrintException(AppLocal.getIntString("message.noprinters")), true);   // OLPOS
           ps = null;
         } else {
           SelectPrinter selectprinter = SelectPrinter.getSelectPrinter(parent, printers);
@@ -255,7 +256,11 @@ public class DevicePrinterPrinter implements DevicePrinter {
 
     } catch (PrintException ex) {
       log.error(ex.getMessage());
-      JMessageDialog.showMessage(parent, new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.printererror"), ex));
+      // OLPOS : erreur du pilote rendue au service qui attend le resultat (bon cuisine,
+      // addition) ; sinon message a l'ecran comme dans uniCenta
+      if (!com.unicenta.pos.printer.PrintErrors.report(ex, true)) {
+        JMessageDialog.showMessage(parent, new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.printererror"), ex));
+      }
     }
 
     //ticket is not needed any more

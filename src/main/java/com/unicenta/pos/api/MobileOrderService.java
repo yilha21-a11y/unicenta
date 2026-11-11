@@ -126,6 +126,13 @@ final class MobileOrderService {
                     + "(0 si la table etait libre).");
         }
         long baseVersion = (Long) bv;
+        // OLPOS : la commande visee est identifiee par son identifiant ET sa version.
+        Object bo = body.get("baseOrderId");
+        String baseOrderId = bo instanceof String && !((String) bo).isEmpty() ? (String) bo : null;
+        if (baseVersion > 0 && baseOrderId == null) {
+            throw bad("invalid_base_order_id", "Champ 'baseOrderId' obligatoire quand baseVersion > 0 : "
+                    + "identifiant de la commande lue (une table peut porter une nouvelle commande).");
+        }
         List<Op> ops = parseOperations(body.get("operations"));
         for (Op op : ops) {
             if (!"add".equals(op.type) && !user.hasPermission(PERMISSION_EDIT_LINES)) {
@@ -173,7 +180,7 @@ final class MobileOrderService {
                 if (dup != null) {
                     return dup;
                 }
-                result = applyLocked(tableId, tableName, requestId, fingerprint, baseVersion, ops, user);
+                result = applyLocked(tableId, tableName, requestId, fingerprint, baseOrderId, baseVersion, ops, user);
             }
         } finally {
             locks.releaseApi(tableId);
@@ -183,7 +190,8 @@ final class MobileOrderService {
     }
 
     private Map<String, Object> applyLocked(String tableId, String tableName, String requestId, String fingerprint,
-            long baseVersion, List<Op> ops, ApiSessions.ApiSession user) throws ApiServer.ApiError, BasicException {
+            String baseOrderId, long baseVersion, List<Op> ops, ApiSessions.ApiSession user)
+            throws ApiServer.ApiError, BasicException {
 
         TableTicketStore.Snapshot snap = store.load(tableId);
 
@@ -197,6 +205,10 @@ final class MobileOrderService {
         long current = snap == null ? 0 : snap.getVersion();
         if (baseVersion != current) {
             throw conflict(tableId, tableName, baseVersion, snap);
+        }
+        if (snap != null && !snap.getOrderId().equals(baseOrderId)) {
+            // meme numero de version, mais ce n'est plus la meme commande (table reutilisee)
+            throw replaced(tableId, tableName, snap);
         }
 
         TicketInfo ticket = snap == null ? new TicketInfo() : snap.getTicket();
@@ -274,7 +286,8 @@ final class MobileOrderService {
         try {
             newVersion = snap == null
                     ? store.create(tableId, ticket, user.getUserName(), TableLocks.Source.MOBILE.label())
-                    : store.update(tableId, ticket, current, user.getUserName(), TableLocks.Source.MOBILE.label());
+                    : store.update(tableId, ticket, snap.getOrderId(), current, user.getUserName(),
+                            TableLocks.Source.MOBILE.label());
         } catch (OrderConflictException e) {
             // modifiee sur un autre poste entre la lecture et l'ecriture
             throw conflict(tableId, tableName, baseVersion, e.getCurrent());
@@ -327,6 +340,14 @@ final class MobileOrderService {
         return new ApiServer.ApiError(409, "version_conflict", "La commande de " + tableName + " a ete modifiee"
                 + (who.isEmpty() ? "" : " " + who) + " depuis votre derniere lecture. Affichez la version a jour "
                 + "puis refaites vos modifications. Rien n'a ete enregistre.", extra);
+    }
+
+    private ApiServer.ApiError replaced(String tableId, String tableName, TableTicketStore.Snapshot cur)
+            throws BasicException {
+        return new ApiServer.ApiError(409, "order_replaced", "La commande que vous modifiiez sur " + tableName
+                + " a ete encaissee ou annulee, et une NOUVELLE commande est ouverte sur cette table. "
+                + "Rien n'a ete enregistre : affichez la nouvelle commande avant de la modifier.",
+                Json.obj("order", orderJson(tableId, tableName, cur)));
     }
 
     // ================================================================== operations
@@ -431,25 +452,14 @@ final class MobileOrderService {
         return line;
     }
 
-    /**
-     * Ligne deja partie en cuisine : envoyee (OK/Yes, comme script.SendOrder) ou
-     * dont l'impression est incertaine (Verify, voir MobileKitchenService).
-     */
+    /** Ligne deja partie en cuisine (voir KitchenService). */
     static boolean isSent(TicketLineInfo line) {
-        String s = line.getProperty("sendstatus");
-        return "OK".equalsIgnoreCase(s) || "Yes".equalsIgnoreCase(s) || MobileKitchenService.VERIFY.equals(s);
+        return KitchenService.isSent(line);
     }
 
     /** Statut cuisine d'une ligne pour le telephone : null (pas un plat cuisine), a_envoyer, envoye, a_verifier. */
     static String kitchenStatus(TicketLineInfo line) {
-        if (!line.isProductKitchen()) {
-            return null;
-        }
-        String s = line.getProperty("sendstatus");
-        if (MobileKitchenService.VERIFY.equals(s)) {
-            return "a_verifier";
-        }
-        return "OK".equalsIgnoreCase(s) || "Yes".equalsIgnoreCase(s) ? "envoye" : "a_envoyer";
+        return KitchenService.kitchenStatus(line);
     }
 
     private static void setNote(TicketLineInfo line, String note) {
@@ -549,7 +559,7 @@ final class MobileOrderService {
             lj.put("kitchen", l.isProductKitchen());
             lj.put("sent", isSent(l));
             lj.put("kitchenStatus", kitchenStatus(l));
-            lj.put("kitchenSendId", l.getProperty(MobileKitchenService.P_LINE_SEND_ID));
+            lj.put("kitchenSendId", l.getProperty(KitchenService.P_LINE_SEND_ID));
             lj.put("addedBy", l.getProperty(P_LINE_ADDED_BY));
             lines.add(lj);
         }
@@ -558,7 +568,7 @@ final class MobileOrderService {
         m.put("taxes", RoundUtils.round(t.getTax()));
         m.put("total", RoundUtils.round(t.getTotal()));
         m.put("totalDisplay", Formats.CURRENCY.formatValue(t.getTotal()));
-        m.put("kitchenSends", MobileKitchenService.sendsJson(t));
+        m.put("kitchenSends", KitchenService.sendsJson(t));
         return m;
     }
 

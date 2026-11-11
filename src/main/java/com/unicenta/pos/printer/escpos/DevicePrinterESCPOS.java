@@ -32,6 +32,11 @@ import javax.swing.JComponent;
 public class DevicePrinterESCPOS implements DevicePrinter  {
       
     private PrinterWritter m_CommOutputPrinter;   
+
+    /** OLPOS : flux d'envoi (suivi du resultat d'un bon). */
+    public PrinterWritter getWritter() {
+        return m_CommOutputPrinter;
+    }
     private Codes m_codes;
     private UnicodeTranslator m_trans;
     

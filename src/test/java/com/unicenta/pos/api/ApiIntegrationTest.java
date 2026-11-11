@@ -416,4 +416,53 @@ public class ApiIntegrationTest {
     private static double number(Object o) {
         return ((Number) o).doubleValue();
     }
+
+    // ------------------------------------------------------------------ OLPOS 5 : droits retires
+
+    private static void exec(String sql, Object... args) throws Exception {
+        try (PreparedStatement ps = tillSession.getConnection().prepareStatement(sql)) {
+            for (int i = 0; i < args.length; i++) {
+                if (args[i] instanceof byte[]) {
+                    ps.setBytes(i + 1, (byte[]) args[i]);
+                } else {
+                    ps.setString(i + 1, (String) args[i]);
+                }
+            }
+            ps.executeUpdate();
+        }
+    }
+
+    @Test
+    public void sessionFermeeDesQueLesDroitsSontRetires() throws Exception {
+        String pwd = "revoc-" + System.nanoTime();
+        exec("INSERT INTO roles(ID, NAME, PERMISSIONS) VALUES ('r-revoc', 'Revocation', ?)",
+                "<permissions><class name=\"mobile.Access\"/></permissions>".getBytes(StandardCharsets.UTF_8));
+        exec("INSERT INTO people(ID, NAME, APPPASSWORD, ROLE, VISIBLE) VALUES ('u-revoc', 'Extra', ?, 'r-revoc', 1)",
+                Hashcypher.hashString(pwd));
+        Response login = call("POST", "/auth/login", null,
+                "{\"userId\":\"u-revoc\",\"password\":\"" + pwd + "\"}");
+        assertEquals(login.body, 200, login.status);
+        String t = (String) login.json().get("token");
+        assertEquals(200, call("GET", "/me", t, null).status);
+
+        // le gerant retire mobile.Access au role : la session ne doit plus servir
+        exec("UPDATE roles SET PERMISSIONS = ? WHERE ID = 'r-revoc'",
+                "<permissions></permissions>".getBytes(StandardCharsets.UTF_8));
+        Thread.sleep(ApiServer.RECHECK_MILLIS + 200);
+        Response r = call("GET", "/floors", t, null);
+        assertEquals(401, r.status);
+        assertTrue(r.body, r.body.contains("access_revoked"));
+        // et la session est fermee : meme apres remise des droits, il faut se reconnecter
+        exec("UPDATE roles SET PERMISSIONS = ? WHERE ID = 'r-revoc'",
+                "<permissions><class name=\"mobile.Access\"/></permissions>".getBytes(StandardCharsets.UTF_8));
+        assertEquals(401, call("GET", "/me", t, null).status);
+
+        // compte masque (supprime de la liste des serveurs) : meme effet
+        Response again = call("POST", "/auth/login", null,
+                "{\"userId\":\"u-revoc\",\"password\":\"" + pwd + "\"}");
+        String t2 = (String) again.json().get("token");
+        exec("UPDATE people SET VISIBLE = 0 WHERE ID = 'u-revoc'");
+        Thread.sleep(ApiServer.RECHECK_MILLIS + 200);
+        assertEquals(401, call("GET", "/me", t2, null).status);
+    }
 }

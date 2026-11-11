@@ -52,8 +52,10 @@ public class PrinterWritterFile extends PrinterWritter {
                 m_out = new FileOutputStream(m_sFilePrinter);  // No poner append = true.
             }
             m_out.write(data);
+            reportSent();   // OLPOS
         } catch (IOException e) {
             System.err.println(e);
+            reportError(e);   // OLPOS : rendu a l'appelant
         }    
     }
     
@@ -70,6 +72,7 @@ public class PrinterWritterFile extends PrinterWritter {
             }
         } catch (IOException e) {
             System.err.println(e);
+            reportError(e);   // OLPOS : rendu a l'appelant
         }    
     }
     
@@ -86,6 +89,7 @@ public class PrinterWritterFile extends PrinterWritter {
             }
         } catch (IOException e) {
             System.err.println(e);
+            reportError(e);   // OLPOS : rendu a l'appelant
         }    
     }    
 }

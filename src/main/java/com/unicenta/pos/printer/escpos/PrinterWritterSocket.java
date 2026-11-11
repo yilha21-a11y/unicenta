@@ -94,9 +94,13 @@ public class PrinterWritterSocket extends PrinterWritter {
                 out = socket.getOutputStream();
             }
             out.write(data);
+            // Donnees acceptees par la connexion TCP : cela ne prouve PAS que le
+            // papier est sorti (statut "envoye", jamais "confirme").
+            reportSent();
         } catch (IOException e) {
             failed = true;
             LOG.log(Level.WARNING, "Imprimante reseau " + getAddress() + " : envoi impossible", e);
+            reportError(new IOException("Imprimante reseau " + getAddress() + " : " + e.getMessage(), e));
             closeQuietly();
         }
     }
@@ -109,6 +113,7 @@ public class PrinterWritterSocket extends PrinterWritter {
             }
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Imprimante reseau " + getAddress() + " : fin d'envoi impossible", e);
+            reportError(new IOException("Imprimante reseau " + getAddress() + " : " + e.getMessage(), e));
         } finally {
             closeQuietly();
             failed = false;   // le bon suivant retentera une connexion

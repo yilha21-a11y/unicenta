@@ -47,7 +47,7 @@ import java.util.logging.Logger;
  *   GET  /api/v1/tables/{id}/order      commande en cours de la table (version, lignes, totaux)
  *   POST /api/v1/tables/{id}/order/changes
  *        {"requestId": "...", "baseVersion": N, "operations": [...]}  (voir MobileOrderService)
- *   POST /api/v1/tables/{id}/kitchen/send            {"sendId": "..."}  (voir MobileKitchenService)
+ *   POST /api/v1/tables/{id}/kitchen/send            {"sendId": "..."}  (voir KitchenService)
  *   POST /api/v1/tables/{id}/kitchen/{sendId}/resolve {"action": "printed" | "reprint"}
  *   POST /api/v1/tables/{id}/bill/print              {"printId": "..."}  addition provisoire (voir MobileBillService)
  * </pre>
@@ -65,7 +65,7 @@ public final class ApiServer {
     private final MobileDataService data;
     private final ApiSessions sessions;
     private final MobileOrderService orders;
-    private final MobileKitchenService kitchen;
+    private final KitchenService kitchen;
     private final MobileBillService bills;
     private final PrintRunner printRunner;
     private HttpServer server;
@@ -100,7 +100,8 @@ public final class ApiServer {
         this.sessions = sessions;
         this.orders = new MobileOrderService(data, locks, 2000);
         this.printRunner = new PrintRunner(printTimeoutMillis);   // une seule file pour tous les bons
-        this.kitchen = new MobileKitchenService(data, orders, locks, printer, printRunner);
+        this.kitchen = new KitchenService(data, orders, locks, printer, printRunner);
+        KitchenService.install(kitchen);   // meme service pour le bouton Cuisine de la caisse
         this.bills = new MobileBillService(data, orders, locks, printer, printRunner);
     }
 
@@ -154,7 +155,7 @@ public final class ApiServer {
     // ================================================================= routage
 
     /** Erreur fonctionnelle renvoyee au telephone en JSON. */
-    static final class ApiError extends Exception {
+    public static final class ApiError extends Exception {
         private static final long serialVersionUID = 1L;
         final int status;
         final String code;
@@ -162,6 +163,15 @@ public final class ApiServer {
 
         ApiError(int status, String code, String message) {
             this(status, code, message, null);
+        }
+
+        /** Code d'erreur (ex. "nothing_to_send"). */
+        public String getCode() {
+            return code;
+        }
+
+        public int getStatus() {
+            return status;
         }
 
         ApiError(int status, String code, String message, Map<String, Object> extra) {

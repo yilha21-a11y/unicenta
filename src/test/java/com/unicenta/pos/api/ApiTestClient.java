@@ -89,9 +89,27 @@ final class ApiTestClient {
         return call("GET", "/tables/" + table + "/order", token, null);
     }
 
+    /** Identifiant de la commande actuellement sur la table (comme le telephone l'a lu), ou null. */
+    @SuppressWarnings("unchecked")
+    String currentOrderId(String token, String table) throws Exception {
+        Response r = getOrder(token, table);
+        Object o = r.status == 200 ? ((Map<String, Object>) r.json().get("order")).get("orderId") : null;
+        return o instanceof String ? (String) o : null;
+    }
+
     Response changes(String token, String table, String requestId, long baseVersion, Object... operations) throws Exception {
-        return call("POST", "/tables/" + table + "/order/changes", token,
-                Json.write(Json.obj("requestId", requestId, "baseVersion", baseVersion, "operations", operations)));
+        Map<String, Object> body = Json.obj("requestId", requestId, "baseVersion", baseVersion, "operations", operations);
+        if (baseVersion > 0) {
+            body.put("baseOrderId", currentOrderId(token, table));   // OLPOS : commande visee
+        }
+        return call("POST", "/tables/" + table + "/order/changes", token, Json.write(body));
+    }
+
+    /** Modification visant explicitement la commande {@code orderId}. */
+    Response changesOn(String token, String table, String orderId, String requestId, long baseVersion,
+            Object... operations) throws Exception {
+        return call("POST", "/tables/" + table + "/order/changes", token, Json.write(Json.obj("requestId", requestId,
+                "baseOrderId", orderId, "baseVersion", baseVersion, "operations", operations)));
     }
 
     static Map<String, Object> add(String productId, int quantity, String note) {

@@ -151,7 +151,7 @@ public class MobileDataService {
         // uniCenta 5.0 : l'envoi en cuisine s'appelle sales.PrintRemote
         // ("Imprimer a la cuisine") ; le telephone le voit sous sales.PrintKitchen.
         if (u.hasPermission(PERMISSION_PRINT_REMOTE)) {
-            perms.add(MobileKitchenService.PERMISSION);
+            perms.add(KitchenService.PERMISSION);
         }
         return perms;
     }

@@ -249,8 +249,9 @@ public class ApiOrdersIntegrationTest {
     @Test
     public void commandeEncaisseeEntreTemps() throws Exception {
         assertEquals(200, api.changes(token, "12", rid(), 0, add("p-cafe", 1, null)).status);
-        tillStore.delete("12", 1);   // la caisse encaisse la table
-        ApiTestClient.Response r = api.changes(token, "12", rid(), 1, add("p-cafe", 1, null));
+        String lue = api.currentOrderId(token, "12");                     // commande affichee sur le telephone
+        tillStore.delete("12", tillStore.load("12").getOrderId(), 1);   // la caisse encaisse la table
+        ApiTestClient.Response r = api.changesOn(token, "12", lue, rid(), 1, add("p-cafe", 1, null));
         assertEquals(409, r.status);
         assertEquals("order_closed", r.errorCode());
         assertNull("aucune commande recreee", tillStore.load("12"));
@@ -383,7 +384,7 @@ public class ApiOrdersIntegrationTest {
         // la caisse envoie la commande en cuisine (script.SendOrder : sendstatus=OK)
         TableTicketStore.Snapshot s = tillStore.load("10");
         s.getTicket().getLine(0).setProperty("sendstatus", "OK");
-        tillStore.update("10", s.getTicket(), s.getVersion(), "Marie", "caisse");
+        tillStore.update("10", s.getTicket(), s.getTicket().getId(), s.getVersion(), "Marie", "caisse");
 
         ApiTestClient.Response r = api.changes(token, "10", rid(), 2, setQuantity(lineId, 2));
         assertEquals(409, r.status);
@@ -473,5 +474,30 @@ public class ApiOrdersIntegrationTest {
         ApiTestClient.Response r = api.getOrder(token, "nope");
         assertEquals(404, r.status);
         assertNotNull(r.errorMessage());
+    }
+
+    // ------------------------------------------------------------------ OLPOS 5
+
+    @Test
+    public void ancienneDemandeNeModifieJamaisLaNouvelleCommandeDeLaTable() throws Exception {
+        assertEquals(200, api.changes(token, "13", rid(), 0, add("p-cafe", 1, null)).status);
+        String ancienne = api.currentOrderId(token, "13");
+        // la caisse encaisse ; une nouvelle commande (version 1 elle aussi) est ouverte sur la table
+        tillStore.delete("13", ancienne, 1);
+        assertEquals(200, api.changes(token, "13", rid(), 0, add("p-the", 1, null)).status);
+        Map<String, Object> avant = api.getOrder(token, "13").order();
+        assertEquals(1L, version(avant));
+        // demande preparee sur l'ancienne commande, version 1 : refusee malgre la meme version
+        ApiTestClient.Response r = api.changesOn(token, "13", ancienne, rid(), 1, add("p-steak", 3, null));
+        assertEquals(409, r.status);
+        assertEquals("order_replaced", r.errorCode());
+        Map<String, Object> apres = api.getOrder(token, "13").order();
+        assertEquals("nouvelle commande intacte", avant.get("lines"), apres.get("lines"));
+        assertEquals(1L, version(apres));
+        // version > 0 sans identifiant : refusee
+        ApiTestClient.Response sansId = api.call("POST", "/tables/13/order/changes", token, Json.write(Json.obj(
+                "requestId", rid(), "baseVersion", 1L, "operations", java.util.Arrays.asList(add("p-cafe", 1, null)))));
+        assertEquals(400, sansId.status);
+        assertEquals("invalid_base_order_id", sansId.errorCode());
     }
 }
