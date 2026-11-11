@@ -1,4 +1,4 @@
-//    uniCenta oPOS - API mobile
+//    OLPOS (derive d'uniCenta oPOS) - API mobile
 //    Licence GPL v3 (voir LICENSE.md).
 package com.openbravo.pos.api;
 
@@ -209,6 +209,14 @@ public final class ApiServer {
             FILES.put("/index.html", new String[] {"index.html", "text/html; charset=utf-8"});
             FILES.put("/app.js", new String[] {"app.js", "application/javascript; charset=utf-8"});
             FILES.put("/app.css", new String[] {"app.css", "text/css; charset=utf-8"});
+            // identite OLPOS : logo, icones (navigateur, iPhone, Android), manifeste
+            FILES.put("/logo.png", new String[] {"logo.png", "image/png"});
+            FILES.put("/favicon-32.png", new String[] {"favicon-32.png", "image/png"});
+            FILES.put("/favicon.ico", new String[] {"favicon-32.png", "image/png"});
+            FILES.put("/icon-192.png", new String[] {"icon-192.png", "image/png"});
+            FILES.put("/icon-512.png", new String[] {"icon-512.png", "image/png"});
+            FILES.put("/apple-touch-icon.png", new String[] {"apple-touch-icon.png", "image/png"});
+            FILES.put("/manifest.webmanifest", new String[] {"manifest.webmanifest", "application/manifest+json; charset=utf-8"});
         }
 
         @Override

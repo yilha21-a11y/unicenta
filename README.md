@@ -1,3 +1,13 @@
+# OLPOS
+
+**OLPOS** est une version dérivée d'**uniCenta oPOS 3.81** (GNU GPL v3), avec une API et une page
+web de prise de commande pour téléphone. Voir [docs/OLPOS.md](docs/OLPOS.md) et
+[docs/API_MOBILE.md](docs/API_MOBILE.md).
+
+Le texte ci-dessous est la documentation d'origine d'uniCenta oPOS, conservée telle quelle.
+
+---
+
 Reference: uniCenta.com
 Author: Jack Gerrard
 

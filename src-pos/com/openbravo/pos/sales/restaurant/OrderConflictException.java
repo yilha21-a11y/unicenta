@@ -1,4 +1,4 @@
-//    uniCenta oPOS - synchronisation caisse / API mobile
+//    OLPOS (derive d'uniCenta oPOS) - synchronisation caisse / API mobile
 //    Licence GPL v3 (voir LICENSE.md).
 package com.openbravo.pos.sales.restaurant;
 

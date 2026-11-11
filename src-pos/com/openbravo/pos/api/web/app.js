@@ -3,6 +3,8 @@
 'use strict';
 
 var API = '/api/v1';
+// Logo OLPOS (ecran d'accueil) ; logiciel derive d'uniCenta oPOS
+var BRAND = '<div class="brand"><img src="logo.png" alt="OLPOS"><p>Prise de commande</p></div>';
 var POLL_MS = 5000;
 
 var S = {
@@ -116,7 +118,7 @@ function sheet(html) {
 function showUsers() {
   S.screen = 'users';
   header('Qui etes-vous ?', null);
-  $('#view').innerHTML = '<p class="muted">Chargement...</p>';
+  $('#view').innerHTML = BRAND + '<p class="muted">Chargement...</p>';
   api('GET', '/users').then(function (r) {
     if (r.status !== 200) { $('#view').innerHTML = '<div class="card">' + esc(errorText(r)) + '</div>'; return; }
     var users = r.data.users;
@@ -125,7 +127,7 @@ function showUsers() {
         + 'et la permission mobile.Access au role du serveur.</div>';
       return;
     }
-    $('#view').innerHTML = '<div class="list">' + users.map(function (u, i) {
+    $('#view').innerHTML = BRAND + '<div class="list">' + users.map(function (u, i) {
       return '<button class="row" data-i="' + i + '"><span>' + esc(u.name) + '</span><span class="muted">&#8250;</span></button>';
     }).join('') + '</div>';
     Array.prototype.forEach.call(document.querySelectorAll('.list .row'), function (el) {

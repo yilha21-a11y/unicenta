@@ -54,4 +54,4 @@ set CP=%CP%;"%DIRNAME%lib/commons-logging-1.1.jar"
 set CP=%CP%;"%DIRNAME%locales/"
 set CP=%CP%;"%DIRNAME%reports/"
 
-java -cp %CP% -Djava.library.path="%DIRNAME%lib/Windows/i368-mingw32" -Ddirname.path="%DIRNAME%./" -Dderby.stream.error.file="%DIRNAME%test-env\derby.log" -splash:"%DIRNAME%uniCenta_splash_dark.png" com.openbravo.pos.forms.StartPOS "%CONFIG%"
+java -cp %CP% -Djava.library.path="%DIRNAME%lib/Windows/i368-mingw32" -Ddirname.path="%DIRNAME%./" -Dderby.stream.error.file="%DIRNAME%test-env\derby.log" -splash:"%DIRNAME%olpos_splash.png" com.openbravo.pos.forms.StartPOS "%CONFIG%"

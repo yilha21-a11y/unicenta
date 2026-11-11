@@ -1,4 +1,4 @@
-//    uniCenta oPOS - Outil de creation d'un environnement de TEST isole.
+//    OLPOS (derive d'uniCenta oPOS) - Outil de creation d'un environnement de TEST isole.
 //    Licence GPL v3 (voir LICENSE.md).
 package com.openbravo.pos.testenv;
 

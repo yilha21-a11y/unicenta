@@ -1,4 +1,4 @@
-//    uniCenta oPOS - imprimante de tickets reseau (ESC/POS en TCP, port 9100 en general)
+//    OLPOS (derive d'uniCenta oPOS) - imprimante de tickets reseau (ESC/POS en TCP, port 9100 en general)
 //    Licence GPL v3 (voir LICENSE.md).
 package com.openbravo.pos.printer.escpos;
 

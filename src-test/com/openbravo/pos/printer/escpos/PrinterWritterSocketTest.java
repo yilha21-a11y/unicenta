@@ -31,12 +31,17 @@ public class PrinterWritterSocketTest {
                         try (Socket s = server.accept(); InputStream in = s.getInputStream()) {
                             byte[] buf = new byte[4096];
                             int n;
+                            int total = 0;
                             while ((n = in.read(buf)) > 0) {
                                 synchronized (received) {
                                     received.write(buf, 0, n);
                                 }
+                                total += n;
                             }
-                            firstJob.countDown();
+                            // une connexion vide (test "l'imprimante repond-elle ?") n'est pas un bon
+                            if (total > 0) {
+                                firstJob.countDown();
+                            }
                         } catch (IOException e) {
                             // fermeture du serveur
                         }
@@ -54,6 +59,26 @@ public class PrinterWritterSocketTest {
         /** Attend la fin d'un premier bon puis renvoie le texte recu (ISO-8859-1 : octets ESC/POS bruts). */
         public String awaitText() throws InterruptedException {
             assertTrue("aucun bon recu", firstJob.await(10, TimeUnit.SECONDS));
+            return text();
+        }
+
+        /**
+         * Attend que le texte recu contienne {@code marker} : un bon complet peut
+         * etre precede de la connexion d'initialisation de l'imprimante (ESC @).
+         */
+        public String awaitContains(String marker) throws InterruptedException {
+            long end = System.currentTimeMillis() + 10000;
+            while (System.currentTimeMillis() < end) {
+                String t = text();
+                if (t.contains(marker)) {
+                    return t;
+                }
+                Thread.sleep(50);
+            }
+            return text();
+        }
+
+        private String text() {
             synchronized (received) {
                 return new String(received.toByteArray(), StandardCharsets.ISO_8859_1);
             }

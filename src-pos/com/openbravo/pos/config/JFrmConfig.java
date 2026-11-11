@@ -48,6 +48,10 @@ public class JFrmConfig extends javax.swing.JFrame {
         
         try {
             this.setIconImage(ImageIO.read(JRootFrame.class.getResourceAsStream("/com/openbravo/images/favicon.png")));
+            java.util.List<java.awt.Image> icons = com.openbravo.pos.forms.Branding.windowIcons();   // OLPOS
+            if (!icons.isEmpty()) {
+                this.setIconImages(icons);
+            }
         } catch (IOException e) {
         }   
         setTitle(AppLocal.APP_NAME + " - " + AppLocal.APP_VERSION + " - " + AppLocal.getIntString("Menu.Configuration"));

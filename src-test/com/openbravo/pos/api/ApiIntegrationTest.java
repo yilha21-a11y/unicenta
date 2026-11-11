@@ -81,6 +81,7 @@ public class ApiIntegrationTest {
         assertEquals(200, r.status);
         assertEquals("ok", r.json().get("status"));
         assertEquals("3.81", r.json().get("version"));
+        assertEquals("nom visible OLPOS", "OLPOS", r.json().get("app"));
         assertEquals(1L, r.json().get("apiVersion"));
         assertTrue(r.contentType.startsWith("application/json"));
     }
@@ -285,13 +286,28 @@ public class ApiIntegrationTest {
         assertTrue(c.getHeaderField("Content-Security-Policy").contains("script-src 'self'"));
         assertEquals("nosniff", c.getHeaderField("X-Content-Type-Options"));
         String html = new String(readAll(c.getInputStream()), StandardCharsets.UTF_8);
-        assertTrue(html.contains("<title>Commandes</title>"));
+        assertTrue(html.contains("<title>OLPOS - Commandes</title>"));
         assertTrue(html.contains("app.js"));
         for (String f : new String[] {"/app.js", "/app.css"}) {
             HttpURLConnection a = (HttpURLConnection) new URL(root + f).openConnection();
             assertEquals(f, 200, a.getResponseCode());
             assertTrue(f, readAll(a.getInputStream()).length > 500);
         }
+        assertTrue(html.contains("<title>OLPOS"));
+        assertTrue(html.contains("apple-touch-icon.png"));
+        // identite OLPOS : images et manifeste servis avec le bon type
+        for (String f : new String[] {"/logo.png", "/favicon-32.png", "/favicon.ico", "/icon-192.png", "/icon-512.png",
+            "/apple-touch-icon.png"}) {
+            HttpURLConnection a = (HttpURLConnection) new URL(root + f).openConnection();
+            assertEquals(f, 200, a.getResponseCode());
+            assertEquals(f, "image/png", a.getContentType());
+            byte[] png = readAll(a.getInputStream());
+            assertTrue(f, png.length > 100 && png[1] == 'P' && png[2] == 'N' && png[3] == 'G');
+        }
+        HttpURLConnection m = (HttpURLConnection) new URL(root + "/manifest.webmanifest").openConnection();
+        assertEquals(200, m.getResponseCode());
+        assertTrue(m.getContentType().startsWith("application/manifest+json"));
+        assertTrue(new String(readAll(m.getInputStream()), StandardCharsets.UTF_8).contains("\"short_name\": \"OLPOS\""));
         // seuls les fichiers de la page sont accessibles
         for (String f : new String[] {"/Json.class", "/../ApiServer.class", "/com/openbravo/pos/api/web/app.js",
             "/unicentaopos.properties"}) {

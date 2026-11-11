@@ -1,6 +1,8 @@
-# API mobile uniCenta (version 1)
+# API mobile OLPOS (version 1)
 
-Cette API permet à une application Android de se connecter à la caisse uniCenta
+> OLPOS est une version dérivée d'uniCenta oPOS 3.81 (voir [OLPOS.md](OLPOS.md)).
+
+Cette API permet à un téléphone (iPhone ou Android) de se connecter à la caisse OLPOS
 sur le réseau local. **Le téléphone n'accède jamais à la base de données** : il
 passe uniquement par l'API, qui applique les règles de la caisse.
 
@@ -310,9 +312,9 @@ Il n'y a pas encore d'application : le téléphone sert de client HTTP.
      Réseau et Internet > Wi-Fi > *votre réseau* > Réseau privé) ;
    - puis autoriser le port de l'API sur les réseaux privés uniquement :
      ```bat
-     netsh advfirewall firewall add rule name="uniCenta API mobile (test)" dir=in action=allow protocol=TCP localport=8095 profile=private
+     netsh advfirewall firewall add rule name="OLPOS API mobile (test)" dir=in action=allow protocol=TCP localport=8095 profile=private
      ```
-     (pour la retirer : `netsh advfirewall firewall delete rule name="uniCenta API mobile (test)"`)
+     (pour la retirer : `netsh advfirewall firewall delete rule name="OLPOS API mobile (test)"`)
 3. Dans le navigateur du téléphone : `http://192.168.1.133:8095/api/v1/health`
    puis `…/api/v1/users`. Si la page s'affiche, la connexion fonctionne.
 4. Pour les adresses avec jeton (commandes, catalogue, tables), le navigateur ne

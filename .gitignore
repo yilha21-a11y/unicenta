@@ -7,3 +7,7 @@
 
 # Journaux Derby
 derby.log
+
+# Images d'origine fournies (copiees sous olpos-logo.png / olpos-icon.png) et apercus regenerables
+/branding/source/OLPOS *
+/branding/generated/

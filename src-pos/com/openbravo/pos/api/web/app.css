@@ -1,13 +1,15 @@
 :root {
   --bg: #f4f5f7; --card: #fff; --text: #1d2228; --muted: #6a737d; --line: #dfe2e6;
-  --accent: #1f6feb; --accent-text: #fff; --busy: #d97706; --busy-bg: #fff4e5;
+  --accent: #051C4A; --accent-text: #fff; --busy: #d97706; --busy-bg: #fff4e5;
   --free: #1a7f37; --free-bg: #eaf7ee; --danger: #c62828; --danger-bg: #fdecea;
-  --info-bg: #e8f0fe;
+  --info-bg: #e6f8f5;
+  /* couleurs OLPOS (mesurees sur le logo fourni) */
+  --navy: #051C4A; --teal: #00C2A5;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #111418; --card: #1b2026; --text: #e8eaed; --muted: #9aa4ae; --line: #2c333b;
-    --accent: #4c8dff; --busy-bg: #3a2a10; --free-bg: #12301c; --danger-bg: #3b1515; --info-bg: #17263f;
+    --accent: #00C2A5; --accent-text: #051C4A; --busy-bg: #3a2a10; --free-bg: #12301c; --danger-bg: #3b1515; --info-bg: #17263f;
   }
 }
 * { box-sizing: border-box; }
@@ -22,6 +24,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #who { color: var(--muted); font-size: 14px; }
 .icon { border: 0; background: none; font-size: 24px; padding: 4px 8px; }
 .link { border: 0; background: none; color: var(--accent); padding: 6px; }
+#brandmark { width: 28px; height: 28px; flex: none; }
+#bar { border-bottom: 3px solid var(--teal); }
+.brand { text-align: center; margin: 8px 0 20px; }
+.brand img { width: 220px; max-width: 70%; height: auto; }
+.brand p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+@media (prefers-color-scheme: dark) {
+  .brand img { background: #fff; border-radius: 14px; padding: 10px 16px; }
+}
+.tabs button.on { background: var(--teal); color: var(--navy); border-color: var(--teal); }
 main { padding: 16px; padding-bottom: 120px; max-width: 760px; margin: 0 auto; }
 #banner { margin: 0; padding: 12px 16px; background: var(--info-bg); border-bottom: 1px solid var(--line); }
 #banner.error { background: var(--danger-bg); }

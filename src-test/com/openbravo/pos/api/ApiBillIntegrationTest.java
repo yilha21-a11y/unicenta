@@ -227,7 +227,7 @@ public class ApiBillIntegrationTest {
             assertTrue(p.printers(), p.printers().contains("reseau " + net.address()));
             assertTrue("une imprimante reseau ne confirme pas", !p.confirmsPrinting());
             p.print();
-            String text = net.awaitText();
+            String text = net.awaitContains("Merci de votre visite");   // fin du bon
             assertTrue(text, text.contains("ADDITION PROVISOIRE"));
             assertTrue(text, text.contains("Terrasse 4"));
             assertTrue(text, text.contains("Steak frites"));

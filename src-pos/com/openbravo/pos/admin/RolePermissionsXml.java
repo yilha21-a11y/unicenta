@@ -1,4 +1,4 @@
-//    uniCenta oPOS - edition simple des permissions d'un role
+//    OLPOS (derive d'uniCenta oPOS) - edition simple des permissions d'un role
 //    Licence GPL v3 (voir LICENSE.md).
 package com.openbravo.pos.admin;
 

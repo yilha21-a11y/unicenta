@@ -1,4 +1,4 @@
-//    uniCenta oPOS - API mobile
+//    OLPOS (derive d'uniCenta oPOS) - API mobile
 //    Licence GPL v3 (voir LICENSE.md).
 package com.openbravo.pos.api;
 

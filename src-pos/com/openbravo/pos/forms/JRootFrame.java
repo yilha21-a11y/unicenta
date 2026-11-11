@@ -78,6 +78,10 @@ public class JRootFrame extends javax.swing.JFrame implements AppMessage {
  
             try {
                 this.setIconImage(ImageIO.read(JRootFrame.class.getResourceAsStream("/com/openbravo/images/favicon.png")));
+                java.util.List<java.awt.Image> icons = Branding.windowIcons();   // OLPOS, toutes tailles
+                if (!icons.isEmpty()) {
+                    this.setIconImages(icons);
+                }
             } catch (IOException e) {
             }   
 

@@ -30,7 +30,10 @@ public class AppLocal {
     /**
      *
      */
-    public static final String APP_NAME = "uniCenta oPOS";
+    // Nom visible (marque OLPOS, version derivee d'uniCenta oPOS).
+    // APP_ID ci-dessous reste "unicentaopos" : identifiant technique (base,
+    // fichier unicentaopos.properties) garde pour la compatibilite.
+    public static final String APP_NAME = "OLPOS";
 
     /**
      *
