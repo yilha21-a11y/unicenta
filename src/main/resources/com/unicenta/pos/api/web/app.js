@@ -1,5 +1,6 @@
-// uniCenta - page web de prise de commande (servie par la caisse).
-// Licence GPL v3. Aucune ressource externe : fonctionne sans Internet.
+// OLPOS - page web de prise de commande (servie par la caisse).
+// Version derivee d'uniCenta oPOS. Licence GPL v3. Aucune ressource externe :
+// fonctionne sans Internet.
 'use strict';
 
 var API = '/api/v1';
@@ -37,19 +38,56 @@ function uuid() {
   var h = Array.prototype.map.call(b, function (x) { return (x + 256).toString(16).slice(1); }).join('');
   return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
 }
+// Stockage du navigateur : garde les demandes en attente (coupure Wi-Fi, page
+// rechargee). S'il est indisponible (navigation privee, stockage plein ou
+// bloque), on garde en memoire tant que la page reste ouverte ET on le dit.
+var MEM = {};
+var STORAGE_OK = (function () {
+  try {
+    var k = '__olpos_test__';
+    localStorage.setItem(k, '1');
+    var ok = localStorage.getItem(k) === '1';
+    localStorage.removeItem(k);
+    return ok;
+  } catch (e) { return false; }
+})();
+var STORAGE_WARNING = 'Stockage du navigateur indisponible (navigation privee ou stockage bloque) : '
+  + 'si vous fermez ou rechargez cette page, une demande en attente sera perdue. '
+  + 'Quittez la navigation privee ou autorisez le stockage pour ce site.';
+
 function store(key, value) {
+  if (value === null || value === undefined) { delete MEM[key]; } else { MEM[key] = JSON.stringify(value); }
+  if (!STORAGE_OK) { return false; }
   try {
     if (value === null || value === undefined) { localStorage.removeItem(key); }
     else { localStorage.setItem(key, JSON.stringify(value)); }
-  } catch (e) { /* navigation privee : on continue sans memoire */ }
+    return true;
+  } catch (e) {
+    STORAGE_OK = false;   // plein ou bloque en cours de route : on previent
+    banner(STORAGE_WARNING, 'error');
+    return false;
+  }
 }
 function load(key) {
-  try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+  if (STORAGE_OK) {
+    try { var v = localStorage.getItem(key); if (v) { return JSON.parse(v); } } catch (e) { /* memoire ci-dessous */ }
+  }
+  return MEM[key] ? JSON.parse(MEM[key]) : null;
 }
 function can(p) { return !!(S.session && S.session.permissions.indexOf(p) >= 0); }
-function money(n) {
-  return (Math.round(n * 100) / 100).toFixed(2).replace('.', ',') + ' \u20ac';
+// Montants : toujours mis en forme par la caisse (devise de sa configuration).
+function money(display, n) {
+  return display != null ? display : (Math.round(n * 100) / 100).toFixed(2);
 }
+// Une reponse 5xx ne prouve pas que rien n'a ete fait : la demande est gardee.
+var DEFINITIVE_5XX = ['kitchen_printer_not_ready', 'kitchen_printing_unavailable', 'printer_not_ready',
+  'printing_unavailable', 'interrupted'];
+function uncertain(r) {
+  if (!r || r.status < 500) { return false; }
+  var code = r.data && r.data.error ? r.data.error.code : null;
+  return DEFINITIVE_5XX.indexOf(code) < 0;
+}
+function orderId() { return S.order && S.order.exists ? S.order.orderId : null; }
 
 // ------------------------------------------------------------------ appels a la caisse
 
@@ -267,7 +305,7 @@ function renderTable() {
       return '<div class="line"><div class="name"><b>' + esc(l.quantity) + ' &times; ' + esc(l.name) + '</b>'
         + kitchenTag(l.kitchenStatus)
         + (l.note ? '<div class="note">' + esc(l.note) + '</div>' : '')
-        + '</div><div>' + money(l.total) + '</div>'
+        + '</div><div>' + esc(money(l.totalDisplay, l.total)) + '</div>'
         + (can('sales.EditLines') && !l.sent ? '<button class="btn" data-line="' + i + '">&#9998;</button>' : '')
         + '</div>';
     }).join('');
@@ -412,8 +450,10 @@ function submit(ops, fromDraft) {
   if (S.sending) { return; }
   var tableId = S.table.id;
   if (load('pending:' + tableId)) { banner('Une demande precedente attend encore une reponse.', 'warn', 'Reessayer', resumePending); return; }
+  // la commande visee est identifiee par son identifiant ET sa version
   var body = {requestId: uuid(), baseVersion: S.order ? S.order.version : 0, operations: ops};
-  store('pending:' + tableId, {body: body, fromDraft: fromDraft});
+  if (orderId()) { body.baseOrderId = orderId(); }
+  if (!store('pending:' + tableId, {body: body, fromDraft: fromDraft})) { banner(STORAGE_WARNING, 'warn'); }
   deliver(tableId);
 }
 
@@ -433,7 +473,15 @@ function deliver(tableId) {
     attempt++;
     return api('POST', '/tables/' + encodeURIComponent(tableId) + '/order/changes', pending.body).then(function (r) {
       S.sending = false;
-      store('pending:' + tableId, null);   // la caisse a repondu : la demande n'est plus en suspens
+      if (uncertain(r)) {
+        // Erreur de la caisse (500...) : on ne sait pas si la demande a ete appliquee.
+        // Elle est GARDEE et sera renvoyee telle quelle (meme requestId : jamais en double).
+        banner('La caisse a repondu par une erreur (' + errorText(r) + '). Resultat incertain : votre demande '
+          + 'est gardee et sera renvoyee telle quelle, sans doublon.', 'error', 'Renvoyer', function () { deliver(tableId); });
+        renderTable();
+        return;
+      }
+      store('pending:' + tableId, null);   // reponse definitive : la demande n'est plus en suspens
       handleResult(tableId, pending, r);
     }, function () {
       if (attempt < 3) { return sleep(1500).then(tryOnce); }
@@ -467,6 +515,7 @@ function handleResult(tableId, pending, r) {
 
 var KITCHEN_LABELS = {
   envoye: 'Envoye a l\'imprimante (non confirme)',
+  echec: 'ECHEC : rien n\'a ete imprime',
   confirme: 'Impression confirmee',
   a_verifier: 'A verifier',
   non_imprime: 'Non imprime',
@@ -505,7 +554,7 @@ function kitchenCard(o) {
 function sendKitchen() {
   if (S.sending || !S.table) { return; }
   var tableId = S.table.id;
-  store('kpending:' + tableId, {sendId: uuid()});
+  if (!store('kpending:' + tableId, {sendId: uuid(), orderId: orderId()})) { banner(STORAGE_WARNING, 'warn'); }
   deliverKitchen(tableId);
 }
 
@@ -515,16 +564,24 @@ function deliverKitchen(tableId) {
   S.sending = true;
   renderTable();
   banner('Envoi en cuisine...', '');
-  api('POST', '/tables/' + encodeURIComponent(tableId) + '/kitchen/send', {sendId: k.sendId}).then(function (r) {
+  api('POST', '/tables/' + encodeURIComponent(tableId) + '/kitchen/send',
+      {sendId: k.sendId, orderId: k.orderId}).then(function (r) {
     S.sending = false;
-    store('kpending:' + tableId, null);   // la caisse a repondu : plus d'incertitude cote telephone
+    if (uncertain(r)) {
+      // erreur de la caisse : on garde l'envoi, "Verifier" redemande le MEME (jamais imprime deux fois)
+      banner('La caisse a repondu par une erreur (' + errorText(r) + ') : envoi cuisine A VERIFIER. '
+        + 'Rien ne sera renvoye automatiquement.', 'error', 'Verifier', function () { deliverKitchen(tableId); });
+      renderTable();
+      return;
+    }
+    store('kpending:' + tableId, null);   // reponse definitive : plus d'incertitude cote telephone
     var d = r.data || {};
     if (d.order && S.table && S.table.id === tableId) { S.order = d.order; }
     if (r.status === 200) {
       var st = d.send.status;
       banner((d.duplicate ? 'Envoi deja recu par la caisse (pas de double impression) : ' : '')
         + (KITCHEN_LABELS[st] || st) + '. ' + (st !== 'confirme' && d.send.message ? d.send.message : ''),
-        st === 'confirme' || st === 'envoye' ? '' : 'warn');
+        st === 'confirme' || st === 'envoye' ? '' : (st === 'echec' ? 'error' : 'warn'));
     } else if (r.status !== 401) {
       banner(errorText(r), r.status === 409 || r.status === 423 || r.status === 503 ? 'warn' : 'error');
     }
@@ -541,7 +598,7 @@ function deliverKitchen(tableId) {
 function resolveKitchen(sendId, action) {
   var tableId = S.table.id;
   api('POST', '/tables/' + encodeURIComponent(tableId) + '/kitchen/' + encodeURIComponent(sendId) + '/resolve',
-    {action: action}).then(function (r) {
+    {action: action, orderId: orderId()}).then(function (r) {
     var d = r.data || {};
     if (d.order) { S.order = d.order; }
     if (r.status === 200) {
@@ -561,7 +618,7 @@ function resolveKitchen(sendId, action) {
 // "Reimprimer" en demande explicitement une nouvelle.
 function printBill() {
   if (S.sending || !S.table) { return; }
-  store('bpending:' + S.table.id, {printId: uuid()});
+  if (!store('bpending:' + S.table.id, {printId: uuid(), orderId: orderId()})) { banner(STORAGE_WARNING, 'warn'); }
   deliverBill(S.table.id);
 }
 
@@ -571,8 +628,15 @@ function deliverBill(tableId) {
   S.sending = true;
   renderTable();
   banner('Impression de l\'addition...', '');
-  api('POST', '/tables/' + encodeURIComponent(tableId) + '/bill/print', {printId: b.printId}).then(function (r) {
+  api('POST', '/tables/' + encodeURIComponent(tableId) + '/bill/print',
+      {printId: b.printId, orderId: b.orderId}).then(function (r) {
     S.sending = false;
+    if (uncertain(r)) {
+      banner('La caisse a repondu par une erreur (' + errorText(r) + ') : addition A VERIFIER. '
+        + 'Rien ne sera renvoye automatiquement.', 'error', 'Verifier', function () { deliverBill(tableId); });
+      renderTable();
+      return;
+    }
     store('bpending:' + tableId, null);
     var d = r.data || {};
     if (d.order && S.table && S.table.id === tableId) { S.order = d.order; }
@@ -581,9 +645,10 @@ function deliverBill(tableId) {
       var text = (d.duplicate ? 'Addition deja recue par la caisse, pas imprimee deux fois' : 'Addition')
         + (d.print.total ? ' (' + d.print.total + ')' : '') + ' : ' + (KITCHEN_LABELS[st] || st) + '. '
         + (st !== 'confirme' && d.print.message ? d.print.message : '');
-      if (st === 'a_verifier' || st === 'non_imprime') {
-        banner(text, 'warn', 'Reimprimer', function () {
-          if (st === 'non_imprime' || confirm('Imprimer une nouvelle addition ? Seulement si elle n\'est PAS sortie.')) {
+      if (st === 'a_verifier' || st === 'non_imprime' || st === 'echec') {
+        banner(text, st === 'echec' ? 'error' : 'warn', 'Reimprimer', function () {
+          if (st === 'non_imprime' || st === 'echec'
+              || confirm('Imprimer une nouvelle addition ? Seulement si elle n\'est PAS sortie.')) {
             printBill();
           }
         });
@@ -621,6 +686,7 @@ function stopPolling() { if (S.timer) { clearInterval(S.timer); S.timer = null; 
 
 $('#logout').onclick = function () { logout(null); };
 S.session = load('session');
+if (!STORAGE_OK) { setTimeout(function () { banner(STORAGE_WARNING, 'error'); }, 0); }
 if (S.session) {
   api('GET', '/me').then(function (r) { if (r.status === 200) { showFloors(); } }, function () { showFloors(); });
 } else {

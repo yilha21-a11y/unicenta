@@ -555,6 +555,7 @@ final class MobileOrderService {
             lj.put("unitPriceTaxed", RoundUtils.round(l.getPriceTax()));
             lj.put("taxRate", l.getTaxRate());
             lj.put("total", RoundUtils.round(l.getValue()));
+            lj.put("totalDisplay", Formats.CURRENCY.formatValue(l.getValue()));   // devise de la configuration
             lj.put("note", l.getProperty(P_LINE_NOTE));
             lj.put("kitchen", l.isProductKitchen());
             lj.put("sent", isSent(l));

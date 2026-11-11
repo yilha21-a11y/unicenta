@@ -51,6 +51,11 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
     public JPanelConfigPeripheral() {
 
         initComponents();
+        // OLPOS : port saisissable partout (imprimante reseau "socket" : hote:9100)
+        for (javax.swing.JComboBox<?> c : new javax.swing.JComboBox<?>[] {jcboSerialPrinter, jcboSerialPrinter2,
+                jcboSerialPrinter3, jcboSerialPrinter4, jcboSerialPrinter5, jcboSerialPrinter6}) {
+            c.setEditable(true);
+        }
 
         printServices = PrintServiceLookup.lookupPrintServices(null, null);
         String[] printernames = ReportUtils.getPrintNames();
@@ -145,6 +150,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
         jcboMachinePrinter.addItem("javapos");
 
         jcboConnPrinter.addItem("file");
+        jcboConnPrinter.addItem("socket");   // OLPOS : imprimante reseau ESC/POS, saisir hote:9100
         jcboConnPrinter.addItem("serial");
 
         jcboSerialPrinter.addItem("COM1");
@@ -176,6 +182,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
         jcboMachinePrinter2.addItem("javapos");
 
         jcboConnPrinter2.addItem("file");
+        jcboConnPrinter2.addItem("socket");   // OLPOS : imprimante reseau ESC/POS, saisir hote:9100
         jcboConnPrinter2.addItem("serial");
 
         jcboSerialPrinter2.addItem("COM1");
@@ -207,6 +214,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
         jcboMachinePrinter3.addItem("javapos");
 
         jcboConnPrinter3.addItem("file");
+        jcboConnPrinter3.addItem("socket");   // OLPOS : imprimante reseau ESC/POS, saisir hote:9100
         jcboConnPrinter3.addItem("serial");
 
         jcboSerialPrinter3.addItem("COM1");
@@ -238,6 +246,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
         jcboMachinePrinter4.addItem("javapos");
 
         jcboConnPrinter4.addItem("file");
+        jcboConnPrinter4.addItem("socket");   // OLPOS : imprimante reseau ESC/POS, saisir hote:9100
         jcboConnPrinter4.addItem("serial");
 
         jcboSerialPrinter4.addItem("COM1");
@@ -269,6 +278,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
         jcboMachinePrinter5.addItem("javapos");
 
         jcboConnPrinter5.addItem("file");
+        jcboConnPrinter5.addItem("socket");   // OLPOS : imprimante reseau ESC/POS, saisir hote:9100
         jcboConnPrinter5.addItem("serial");
 
         jcboSerialPrinter5.addItem("COM1");
@@ -300,6 +310,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
         jcboMachinePrinter6.addItem("javapos");
 
         jcboConnPrinter6.addItem("file");
+        jcboConnPrinter6.addItem("socket");   // OLPOS : imprimante reseau ESC/POS, saisir hote:9100
         jcboConnPrinter6.addItem("serial");
 
         jcboSerialPrinter6.addItem("COM1");
@@ -330,6 +341,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
 
         jcboConnDisplay.addItem("serial");
         jcboConnDisplay.addItem("file");
+        jcboConnDisplay.addItem("socket");   // OLPOS : imprimante reseau ESC/POS, saisir hote:9100
 
         jcboSerialDisplay.addItem("COM1");
         jcboSerialDisplay.addItem("COM2");

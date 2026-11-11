@@ -63,6 +63,24 @@ public abstract class JTicketsBag extends JPanel {
     public abstract void deleteTicket();
     protected abstract JComponent getBagComponent();
     protected abstract JComponent getNullComponent();
+    /**
+     * OLPOS : verifie, juste avant d'ouvrir l'encaissement, que la commande
+     * affichee est toujours celle enregistree (personne ne l'a modifiee ou
+     * remplacee ailleurs). Rien n'est encaisse si ce n'est pas le cas.
+     * @return true si l'encaissement peut continuer
+     */
+    public boolean checkBeforePayment() {
+        return true;
+    }
+
+    /**
+     * OLPOS : envoi en cuisine par le service commun (meme service que les
+     * telephones).
+     * @return true si l'envoi a ete pris en charge ici (sinon : comportement uniCenta)
+     */
+    public boolean sendToKitchen() {
+        return false;
+    }
     
     /**
      *

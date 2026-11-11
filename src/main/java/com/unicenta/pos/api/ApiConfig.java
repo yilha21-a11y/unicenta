@@ -3,6 +3,7 @@
 package com.unicenta.pos.api;
 
 import com.unicenta.pos.forms.AppProperties;
+import java.io.File;
 
 /**
  * Reglages de l'API mobile, lus dans le fichier de configuration de la caisse
@@ -19,6 +20,11 @@ import com.unicenta.pos.forms.AppProperties;
  * api.login.lockseconds=60     # duree du blocage
  * api.users.list=true          # le telephone peut afficher la liste des serveurs
  * api.threads=4                # requetes traitees en parallele
+ *
+ * api.https.enabled=false      # HTTPS (mots de passe et jetons chiffres), voir docs/HTTPS.md
+ * api.https.keystore=          # certificat du PC (PKCS12) ; vide = dossier de donnees\https\olpos-https.p12
+ * api.https.password=          # mot de passe du fichier ; vide = contenu de https\password.txt
+ * api.https.caport=8094        # page HTTP (sans mot de passe) pour installer l'autorite sur le telephone ; 0 = aucune
  * </pre>
  */
 public final class ApiConfig {
@@ -45,11 +51,55 @@ public final class ApiConfig {
         String lu = trim(props.getProperty("api.users.list"));
         listUsers = lu == null || Boolean.parseBoolean(lu);
         threads = intValue(props, "api.threads", 4, 1, 32);
+        httpsEnabled = Boolean.parseBoolean(trim(props.getProperty("api.https.enabled")));
+        String ks = trim(props.getProperty("api.https.keystore"));
+        File httpsDir = new File(com.unicenta.pos.forms.AppConfig.dataDirPath(), "https");
+        httpsKeystore = ks == null || ks.isEmpty() ? new File(httpsDir, "olpos-https.p12") : new File(ks);
+        String pw = props.getProperty("api.https.password");
+        httpsPassword = pw == null || pw.trim().isEmpty() ? null : pw.trim();
+        httpsPasswordFile = new File(httpsKeystore.getParentFile(), "password.txt");
+        httpsCaFile = new File(httpsKeystore.getParentFile(), "olpos-ca.cer");
+        caPort = intValue(props, "api.https.caport", 8094, 0, 65535);
         // Les commandes par table n'ont de sens que si la caisse est en mode restaurant
         restaurantMode = "restaurant".equals(trim(props.getProperty("machine.ticketsbag")));
     }
 
     private final boolean restaurantMode;
+    private final boolean httpsEnabled;
+    private final File httpsKeystore;
+    private final String httpsPassword;
+    private final File httpsPasswordFile;
+    private final File httpsCaFile;
+    private final int caPort;
+
+    public boolean isHttpsEnabled() {
+        return httpsEnabled;
+    }
+
+    public File getHttpsKeystore() {
+        return httpsKeystore;
+    }
+
+    /** Mot de passe du certificat : api.https.password, sinon le fichier password.txt a cote. */
+    public char[] getHttpsPassword() throws java.io.IOException {
+        if (httpsPassword != null) {
+            return httpsPassword.toCharArray();
+        }
+        if (!httpsPasswordFile.isFile()) {
+            throw new java.io.IOException("Mot de passe du certificat HTTPS introuvable (" + httpsPasswordFile + ")");
+        }
+        return new String(java.nio.file.Files.readAllBytes(httpsPasswordFile.toPath()),
+                java.nio.charset.StandardCharsets.UTF_8).trim().toCharArray();
+    }
+
+    /** Certificat de l'autorite locale a installer sur les telephones. */
+    public File getHttpsCaFile() {
+        return httpsCaFile;
+    }
+
+    public int getCaPort() {
+        return caPort;
+    }
 
     /** true si la caisse utilise le plan de salle (machine.ticketsbag=restaurant). */
     public boolean isRestaurantMode() {

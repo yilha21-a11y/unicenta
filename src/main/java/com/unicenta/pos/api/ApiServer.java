@@ -109,7 +109,17 @@ public final class ApiServer {
         if (server != null) {
             return;
         }
-        HttpServer s = HttpServer.create(new InetSocketAddress(config.getBind(), config.getPort()), 0);
+        HttpServer s;
+        if (config.isHttpsEnabled()) {
+            // OLPOS : HTTPS avec le certificat du PC (signe par l'autorite locale du restaurant)
+            com.sun.net.httpserver.HttpsServer hs = com.sun.net.httpserver.HttpsServer.create(
+                    new InetSocketAddress(config.getBind(), config.getPort()), 0);
+            hs.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(sslContext(config)));
+            s = hs;
+            startCaPage();
+        } else {
+            s = HttpServer.create(new InetSocketAddress(config.getBind(), config.getPort()), 0);
+        }
         s.createContext(PREFIX + "/", new Router());
         s.createContext("/", new WebPage());   // page de prise de commande (telephone)
         executor = Executors.newFixedThreadPool(config.getThreads(), new ThreadFactory() {
@@ -129,6 +139,10 @@ public final class ApiServer {
     }
 
     public synchronized void stop() {
+        if (caServer != null) {
+            caServer.stop(0);
+            caServer = null;
+        }
         if (server != null) {
             server.stop(1);
             server = null;
@@ -141,6 +155,105 @@ public final class ApiServer {
             }
             LOG.info("API mobile arretee");
         }
+    }
+
+    // ================================================================= HTTPS
+
+    private HttpServer caServer;
+
+    /** Contexte TLS a partir du certificat PKCS12 du PC (TLS 1.2 minimum). */
+    static javax.net.ssl.SSLContext sslContext(ApiConfig config) throws IOException {
+        java.io.File f = config.getHttpsKeystore();
+        if (!f.isFile()) {
+            throw new IOException("HTTPS active mais certificat absent : " + f
+                    + " (voir docs/HTTPS.md : OLPOS-HTTPS.cmd cree le certificat).");
+        }
+        char[] pw = config.getHttpsPassword();
+        try (java.io.InputStream in = new java.io.FileInputStream(f)) {
+            java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
+            ks.load(in, pw);
+            javax.net.ssl.KeyManagerFactory kmf = javax.net.ssl.KeyManagerFactory.getInstance(
+                    javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(ks, pw);
+            javax.net.ssl.SSLContext ctx = javax.net.ssl.SSLContext.getInstance("TLSv1.2");
+            ctx.init(kmf.getKeyManagers(), null, null);
+            return ctx;
+        } catch (java.security.GeneralSecurityException e) {
+            throw new IOException("Certificat HTTPS illisible (" + f + ") : " + e.getMessage(), e);
+        } finally {
+            java.util.Arrays.fill(pw, ' ');
+        }
+    }
+
+    /**
+     * Page HTTP minimale, sur un autre port, qui sert UNIQUEMENT le certificat
+     * public de l'autorite locale (a installer une fois sur chaque telephone) et
+     * son empreinte. Aucun mot de passe ni jeton n'y transite.
+     */
+    private void startCaPage() throws IOException {
+        if (config.getCaPort() <= 0 || !config.getHttpsCaFile().isFile()) {
+            return;
+        }
+        final byte[] ca = java.nio.file.Files.readAllBytes(config.getHttpsCaFile().toPath());
+        final String fingerprint = fingerprint(ca);
+        HttpServer c = HttpServer.create(new InetSocketAddress(config.getBind(), config.getCaPort()), 0);
+        c.createContext("/", new HttpHandler() {
+            @Override
+            public void handle(HttpExchange ex) throws IOException {
+                try {
+                    String path = ex.getRequestURI().getPath();
+                    byte[] body;
+                    if ("/olpos-ca.cer".equals(path)) {
+                        body = ca;
+                        ex.getResponseHeaders().set("Content-Type", "application/x-x509-ca-cert");
+                    } else {
+                        body = ("<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" "
+                                + "content=\"width=device-width\"><title>OLPOS - certificat</title>"
+                                + "<h1>OLPOS : installer le certificat</h1><p>1. <a href=\"/olpos-ca.cer\">"
+                                + "Telecharger le certificat du restaurant</a>.</p><p>2. Verifiez l'empreinte "
+                                + "SHA-256 affichee sur le telephone :</p><pre>" + fingerprint + "</pre>"
+                                + "<p>Elle doit etre IDENTIQUE a celle de docs/HTTPS.md sur la caisse "
+                                + "(fichier https\\empreinte.txt). Sinon, n'installez pas ce certificat.</p>"
+                                + "<p>3. Ouvrez ensuite <b>https://</b>&lt;adresse du PC&gt;:" + config.getPort() + "/</p>")
+                                .getBytes(StandardCharsets.UTF_8);
+                        ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+                    }
+                    ex.getResponseHeaders().set("Cache-Control", "no-store");
+                    ex.sendResponseHeaders(200, body.length);
+                    try (OutputStream os = ex.getResponseBody()) {
+                        os.write(body);
+                    }
+                } finally {
+                    ex.close();
+                }
+            }
+        });
+        c.start();
+        caServer = c;
+    }
+
+    /** Empreinte SHA-256 (format AA:BB:...) d'un certificat DER ou PEM. */
+    static String fingerprint(byte[] cert) {
+        try {
+            java.security.cert.Certificate x = java.security.cert.CertificateFactory.getInstance("X.509")
+                    .generateCertificate(new java.io.ByteArrayInputStream(cert));
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(x.getEncoded());
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < d.length; i++) {
+                if (i > 0) {
+                    sb.append(':');
+                }
+                sb.append(String.format("%02X", d[i]));
+            }
+            return sb.toString();
+        } catch (java.security.GeneralSecurityException e) {
+            return "(certificat illisible)";
+        }
+    }
+
+    /** Port de la page du certificat (-1 si elle n'est pas demarree). */
+    public synchronized int getCaPort() {
+        return caServer == null ? -1 : caServer.getAddress().getPort();
     }
 
     /** Port reellement utilise (utile si api.port=0 dans les tests). */
@@ -259,6 +372,9 @@ public final class ApiServer {
                 ex.getResponseHeaders().set("Content-Type", f[1]);
                 ex.getResponseHeaders().set("Cache-Control", "no-cache");
                 ex.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
+                if (ex instanceof com.sun.net.httpserver.HttpsExchange) {
+                    ex.getResponseHeaders().set("Strict-Transport-Security", "max-age=31536000");
+                }
                 ex.getResponseHeaders().set("X-Frame-Options", "DENY");
                 ex.getResponseHeaders().set("Referrer-Policy", "no-referrer");
                 ex.getResponseHeaders().set("Content-Security-Policy", "default-src 'self'; script-src 'self'; "

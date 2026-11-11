@@ -38,7 +38,7 @@ public class PropertyUtils {
     }
 
     private File getDefaultConfig() {
-        return new File(new File("C:\\Documents and Settings\\jack"), "unicentaopos.properties");
+        return com.unicenta.pos.forms.AppConfig.getActiveConfigFile();   // OLPOS : config de CETTE instance
     }
 
     private void load() {

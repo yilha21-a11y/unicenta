@@ -603,7 +603,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
                 .getProductTaxCategoryID(), m_oTicket.getCustomer()));
       });
 
-      m_jTicketId.setText(m_oTicket.getName(m_oTicketExt));
+      m_jTicketId.setText(ticketTitle());   // OLPOS
       m_ticketlines.clearTicketLines();
 
       for (int i = 0; i < m_oTicket.getLinesCount(); i++) {
@@ -1061,7 +1061,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
                       .getIntString("message.nocustomer")).show(this);
             } else {
               m_oTicket.setCustomer(newcustomer);
-              m_jTicketId.setText(m_oTicket.getName(m_oTicketExt));
+              m_jTicketId.setText(ticketTitle());   // OLPOS
             }
           } catch (BasicException e) {
             Toolkit.getDefaultToolkit().beep();
@@ -1812,6 +1812,12 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
           ticket.resetPayments();
         }
 
+        // OLPOS : la commande de la table doit etre celle ouverte ici (identifiant +
+        // version) AVANT tout encaissement ; sinon rien n'est encaisse.
+        if (!m_ticketsbag.checkBeforePayment()) {
+          return false;
+        }
+
         if (executeEvent(ticket, ticketext, "ticket.total") == null) {
           if (listener != null) {
             listener.stop();
@@ -1833,6 +1839,8 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
             ticket.setUser(m_App.getAppUserView().getUser().getUserInfo());
             ticket.setActiveCash(m_App.getActiveCashIndex());
             ticket.setDate(new Date());
+            // OLPOS : numero de commande enregistre avec la vente (distinct du numero de ticket)
+            ensureOrderNumber(ticket);
 
             if (executeEvent(ticket, ticketext, "ticket.save") == null) {
 
@@ -1926,7 +1934,32 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
   }
 
 
+  /** OLPOS : modeles qui affichent le numero de commande (ticket client, bon cuisine, addition). */
+  private static final java.util.Set<String> NUMBERED_PRINTS = new java.util.HashSet<>(java.util.Arrays.asList(
+          "Printer.Ticket", "Printer.Ticket2", "Printer.TicketKitchen", "Printer.TicketBill", "Printer.TicketPreview"));
+
+  /** OLPOS : attribue le numero de commande 1-100 s'il manque (compteur partage en base). */
+  private void ensureOrderNumber(TicketInfo ticket) {
+    try {
+      OrderNumbers.ensure(ticket, m_App.getSession());
+    } catch (BasicException e) {
+      log.warn("Numero de commande non attribue : {}", e.getMessage());
+    }
+  }
+
+  /** OLPOS : nom affiche de la commande, suivi de "COMMANDE N\u00b0 42" si elle est numerotee. */
+  private String ticketTitle() {
+    String name = m_oTicket.getName(m_oTicketExt);
+    String number = OrderNumbers.label(m_oTicket);
+    return number == null ? name : name + "   -   " + number;
+  }
+
   private void printTicket(String sresourcename, TicketInfo ticket, Object ticketext) {
+
+    // OLPOS : numero de commande attribue avant la premiere impression numerotee
+    if (ticket != null && NUMBERED_PRINTS.contains(sresourcename)) {
+      ensureOrderNumber(ticket);
+    }
 
     String sresource = dlSystem.getResourceAsXML(sresourcename);
     if (sresource == null) {
@@ -3044,6 +3077,14 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
   private void j_btnRemotePrtActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_j_btnRemotePrtActionPerformed
 
+    // OLPOS : avec les tables, le bouton passe par le MEME service que les
+    // telephones (nouvelles lignes seulement, statut reel, pas de reimpression
+    // automatique). Le script uniCenta (script.SendOrder) n'est plus utilise ici.
+    if (m_ticketsbag.sendToKitchen()) {
+      remoteOrderDisplay();
+      return;
+    }
+
     String rScript = (dlSystem.getResourceAsText("script.SendOrder"));
 
     Interpreter i = new Interpreter();
@@ -3314,7 +3355,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
             checkCustomer();
 
-            m_jTicketId.setText(m_oTicket.getName(m_oTicketExt));
+            m_jTicketId.setText(ticketTitle());   // OLPOS
 
           } catch (BasicException e) {
             MessageInf msg = new MessageInf(MessageInf.SGN_WARNING,

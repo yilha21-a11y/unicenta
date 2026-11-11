@@ -161,6 +161,12 @@ public class JTicketsBagRestaurant extends javax.swing.JPanel {
     
     private void printTicket(String sresourcename, TicketInfo ticket, String table) {
         if (ticket != null) {
+            // OLPOS : numero de commande 1-100 attribue avant le premier bon
+            try {
+                com.unicenta.pos.sales.OrderNumbers.ensure(ticket, m_App.getSession());
+            } catch (BasicException e) {
+                log.warn("Numero de commande non attribue : {}", e.getMessage());
+            }
 
             if (ticket.getPickupId()== 0){
                 try{

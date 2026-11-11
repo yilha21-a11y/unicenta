@@ -497,6 +497,17 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
     m_TTP = new TicketParser(getDeviceTicket(), m_dlSystem);
     printerStart();
 
+    // OLPOS : marque et modeles OLPOS dans la base (insertion seulement ; le nom,
+    // le logo et les textes du restaurant ne sont jamais modifies)
+    if (!"false".equals(m_props.getProperty("olpos.branding.migrate"))) {
+      BrandingMigration.run(m_dlSystem);
+    }
+    if (!"false".equals(m_props.getProperty("olpos.ordernumber.templates"))) {
+      com.unicenta.pos.sales.OrderNumberTemplates.run(m_dlSystem);
+    }
+    // OLPOS : envoi cuisine (caisse + telephones) et acces telephone
+    startOlposServices();
+
     m_Scale = new DeviceScale(this, m_props);
 
     m_Scanner = DeviceScannerFactory.createInstance(m_props);
@@ -583,8 +594,46 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
         log.error(ex.getMessage());
       }
 
+      stopOlposServices();   // OLPOS : avant la fermeture de la base
       session.close();
       SwingUtilities.getWindowAncestor(this).dispose();
+    }
+  }
+
+  // ==================================================================== OLPOS
+
+  private Session m_olposSession;
+  private com.unicenta.pos.api.ApiServer m_apiServer;
+  private com.unicenta.pos.api.OlposServices m_olposServices;
+
+  /**
+   * Demarre le service cuisine (bouton de la caisse et telephones) et, si
+   * api.enabled=true, l'acces telephone. Un echec n'empeche jamais la caisse
+   * de fonctionner : un avertissement est affiche.
+   */
+  private void startOlposServices() {
+    try {
+      // Connexion dediee, via le pilote deja charge (pas de second moteur Derby)
+      m_olposSession = AppViewConnection.createAdditionalSession(m_props);
+      m_olposServices = com.unicenta.pos.api.OlposServices.start(m_props, m_olposSession, m_TP, m_TTP);
+      m_apiServer = m_olposServices.getApiServer();
+    } catch (BasicException | IOException | RuntimeException e) {
+      log.warn("Acces telephone / envoi cuisine non demarre", e);
+      stopOlposServices();
+      JMessageDialog.showMessage(this, new MessageInf(MessageInf.SGN_WARNING,
+              AppLocal.getIntString("message.mobileapierror"), e));
+    }
+  }
+
+  private void stopOlposServices() {
+    if (m_olposServices != null) {
+      m_olposServices.stop();
+      m_olposServices = null;
+      m_apiServer = null;
+    }
+    if (m_olposSession != null) {
+      m_olposSession.close();
+      m_olposSession = null;
     }
   }
 
