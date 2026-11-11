@@ -1,0 +1,27 @@
+OLPOS - caisse enregistreuse
+============================
+
+OLPOS est une version derivee d'uniCenta oPOS (elle-meme derivee
+d'Openbravo POS). C'est un logiciel libre distribue sous la licence
+GNU General Public License version 3 (voir licences\LICENCE-GPL-3.0.txt).
+Les licences des bibliotheques incluses sont dans licences\bibliotheques\,
+celles de Java (runtime OpenJDK) dans runtime\legal\.
+Code source : https://github.com/yilha21-a11y/unicenta
+
+Emplacements
+------------
+Programme : %LOCALAPPDATA%\Programs\OLPOS   (remplace par les mises a jour)
+Donnees   : %LOCALAPPDATA%\OLPOS
+            olpos.properties  configuration de la caisse
+            database\         base de donnees (Apache Derby)
+            derby.log         journal de la base
+
+Les donnees ne sont supprimees ni par une mise a jour ni par la
+desinstallation. Pour repartir de zero, supprimez vous-meme le dossier
+%LOCALAPPDATA%\OLPOS (faites d'abord une sauvegarde).
+
+Premier lancement
+-----------------
+La base est creee automatiquement au premier lancement. Les comptes
+d'exemple d'uniCenta (Administrator, Manager, Employee, Guest) n'ont pas de
+mot de passe : definissez-en un dans Maintenance > Utilisateurs.

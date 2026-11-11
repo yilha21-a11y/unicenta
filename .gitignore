@@ -14,3 +14,6 @@ derby.log
 
 # Programme Windows genere par build-exe.bat
 /dist/
+
+# Programme et installateur generes par build-installer.bat
+/dist/

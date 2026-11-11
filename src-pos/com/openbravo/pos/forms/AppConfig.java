@@ -67,7 +67,54 @@ public class AppConfig implements AppProperties {
     }
 
     private static File getDefaultConfig() {
+        File data = getInstalledDataDir();
+        if (data != null) {
+            return new File(data, "olpos.properties");
+        }
         return new File(new File(System.getProperty("user.home")), AppLocal.APP_ID + ".properties");
+    }
+
+    /**
+     * Dossier des donnees de la version installee (installateur OLPOS-Setup.exe).
+     * Le programme installe est lance avec {@code -Dolpos.installed=true} : sa
+     * configuration et sa base vont alors dans %LOCALAPPDATA%\OLPOS (ou dans
+     * {@code -Dolpos.datadir=...}), separes du dossier du programme, et jamais
+     * dans ~/unicentaopos.properties ni ~/unicentaopos-database.
+     * @return le dossier (cree si besoin), ou null hors version installee
+     */
+    public static File getInstalledDataDir() {
+        File f = installedDataDirPath();
+        if (f != null && !f.isDirectory() && !f.mkdirs()) {
+            logger.log(Level.WARNING, "Impossible de creer le dossier de donnees {0}", f);
+        }
+        return f;
+    }
+
+    /** Chemin du dossier de donnees, sans le creer (null hors version installee). */
+    static File installedDataDirPath() {
+        String dir = System.getProperty("olpos.datadir");
+        if ((dir == null || dir.trim().isEmpty())
+                && "true".equals(System.getProperty("olpos.installed"))) {
+            String local = System.getenv("LOCALAPPDATA");
+            File base = (local == null || local.trim().isEmpty())
+                    ? new File(System.getProperty("user.home"), "AppData\\Local")
+                    : new File(local);
+            dir = new File(base, "OLPOS").getAbsolutePath();
+        }
+        if (dir == null || dir.trim().isEmpty()) {
+            return null;
+        }
+        return new File(dir.trim());
+    }
+
+    /**
+     * @return le chemin par defaut de la base Derby (dossier de donnees de la
+     *         version installee, sinon ~/unicentaopos-database)
+     */
+    public static File getDefaultDerbyDatabase() {
+        File data = getInstalledDataDir();
+        return data != null ? new File(data, "database")
+                : new File(new File(System.getProperty("user.home")), AppLocal.APP_ID + "-database");
     }
 
     // Fichier de configuration de l'instance en cours (celui passe en argument
@@ -185,7 +232,19 @@ public class AppConfig implements AppProperties {
         } catch (IOException e){
             loadDefault();
         }
-    
+
+        // Version installee : apres une mise a jour ou un deplacement du
+        // programme, un ancien chemin de derby.jar peut ne plus exister ; on
+        // reprend alors celui du programme installe.
+        if (getInstalledDataDir() != null) {
+            String lib = m_propsconfig.getProperty("db.driverlib");
+            String dirname = System.getProperty("dirname.path");
+            if (dirname != null && lib != null && lib.toLowerCase().endsWith("derby.jar")
+                    && !new File(lib).isFile()) {
+                m_propsconfig.setProperty("db.driverlib",
+                        new File(new File(dirname), "lib/derby.jar").getAbsolutePath());
+            }
+        }
     }
 
     /**
@@ -228,7 +287,7 @@ public class AppConfig implements AppProperties {
         
         m_propsconfig.setProperty("db.driverlib", new File(new File(dirname), "lib/derby.jar").getAbsolutePath());
         m_propsconfig.setProperty("db.driver", "org.apache.derby.jdbc.EmbeddedDriver");
-        m_propsconfig.setProperty("db.URL", "jdbc:derby:" + new File(new File(System.getProperty("user.home")), AppLocal.APP_ID + "-database").getAbsolutePath() + ";create=true");
+        m_propsconfig.setProperty("db.URL", "jdbc:derby:" + getDefaultDerbyDatabase().getAbsolutePath() + ";create=true");
         m_propsconfig.setProperty("db.user", "");
         m_propsconfig.setProperty("db.password", "");
 

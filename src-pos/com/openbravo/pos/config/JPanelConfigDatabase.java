@@ -349,7 +349,7 @@ public class JPanelConfigDatabase extends javax.swing.JPanel implements PanelCon
         if ("Apache Derby Embedded".equals(jcboDBDriver.getSelectedItem())) {
             jtxtDbDriverLib.setText(new File(new File(dirname), "lib/derby.jar").getAbsolutePath());
             jtxtDbDriver.setText("org.apache.derby.jdbc.EmbeddedDriver");
-            jtxtDbURL.setText("jdbc:derby:" + new File(new File(System.getProperty("user.home")), AppLocal.APP_ID + "-database").getAbsolutePath() + ";create=true");
+            jtxtDbURL.setText("jdbc:derby:" + com.openbravo.pos.forms.AppConfig.getDefaultDerbyDatabase().getAbsolutePath() + ";create=true");
             jtxtDbUser.setText("");
             jtxtDbPassword.setText("");            
             

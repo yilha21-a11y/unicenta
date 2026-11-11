@@ -99,6 +99,14 @@ public class StartPOS {
      * @param args
      */
     public static void main (final String args[]) {
+
+        // Version installee : le journal Derby va dans le dossier de donnees
+        // (le dossier du programme n'est pas accessible en ecriture).
+        java.io.File dataDir = AppConfig.getInstalledDataDir();
+        if (dataDir != null && System.getProperty("derby.stream.error.file") == null) {
+            System.setProperty("derby.stream.error.file",
+                    new java.io.File(dataDir, "derby.log").getAbsolutePath());
+        }
         
         java.awt.EventQueue.invokeLater(new Runnable() {
             @Override
