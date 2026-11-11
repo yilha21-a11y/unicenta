@@ -1,86 +1,47 @@
-# OLPOS
+# uniCenta oPos 5.0
 
-**OLPOS** est une version dérivée d'**uniCenta oPOS 3.81** (GNU GPL v3), avec une API et une page
-web de prise de commande pour téléphone. Voir [docs/OLPOS.md](docs/OLPOS.md) et
-[docs/API_MOBILE.md](docs/API_MOBILE.md).
+link for original files https://sourceforge.net/projects/unicentaopos/files/source
 
-Le texte ci-dessous est la documentation d'origine d'uniCenta oPOS, conservée telle quelle.
+# Requirements to run the uploaded code:
 
----
+* ## Java JDK 11
+* ## Maven 3.9.8
+* ## MySQL Database
+* ## Internet Connection to download dependencies
 
-Reference: uniCenta.com
-Author: Jack Gerrard
+## Overview
 
-v3.81 Is a direct replacement for v3.80 - Apache Derby database driver rolled-back to 10.10
+uniCenta oPos is an enterprise level point of sale system and it has the following feature set
 
-v3.80 Is a deprecated release. No source code available.
-Apache Derby 10.11 caused known issue (Apache Derby forums) with Auto-Increment fields
+* Sales
+* Inventory
+* Customers
+* Suppliers
+* Employees
+* Reporting
 
-********************************************************************************
+It runs on the following operating systems
 
-v3.90 SOURCE CODE IS NOT AVAILABLE! 
+* Windows
+* Linux
+* Mac osX
 
-Use v3.81 if you do not need digital receipt functionality.
+Full details can be found here: https://unicenta.com
 
-posApps Digital Receipt plugin app' is totally independent of uniCenta oPOS and exists as a separate jar file. No uniCenta oPOS source code has been changed or  affected.
+## Before you start
+Install mysql (version 5X supported) and create a schema called unicentaopos
 
-THE ONLY DIFFERENCE BETWEEN V3.90 AND v3.81 IS THAT v3.90 IS DELIVERED WITH OUR posApps Digital Receipt plugin library jar and change to Ticket.Close script - which is available from http://www.posapps.io 
+## Build and Run the appication
+To get started, simply clone the repository and build the artifacts
+### build the artifacts
+```
+mvn clean package
+```
+### run the application
+```
+java -jar ./target/unicentaopos
+```
+
+# Note: *if this java -jar ./target/unicentaopos fails. use start.bat or start.sh depending on operating system you using. start.bat and start.sh are located in the target folder*
 
 
-Please see - http://www.posapps.io for more information
-
-********************************************************************************
-
-3.81
-1.  Bug: Ticket and Pickup auto-numbering incrementing +100 on each restart 
-    Fix: Revert Apache Derby 10.11 derby.jar to version 10.10.2
-
-3.80
-1.  Bug: Customer Find - Telephone SQL field criteria incorrect - returning PHONE2
-    Fix: Correct SQL statement to return PHONE
-2.  Bug: Categories Display Name in panel checkbox ineffective
-    Fix: Change getRootCategories SQL to only include CATSHOWNAME=1
-3.  Bug: Show Category in Panel check/un-check ineffective
-    Fix: Amend RootCategory method
-4.  Bug: script.linediscount rounding error
-    Fix: Remove Math(Rounding()) and replace with revised formula on LineTotal value
-5.  Bug: Free Sale line product add fails after upgrade
-    Fix: Change Installer SQL statement + supporting in-line code
-6.  Bug: Close Cash - Drawer Openings in MySQL not resetting
-    Fix: Change code to allow for TIMESTAMP differentails between DB's
-7.  Bug: JPanelTicket SouthComponent refresh error
-    Fix: Now conditional - John L
-8.  Bug: rpt:productsalesprofit - incompatible/incorrect SQL syntax causes report fail
-    Fix: redesign and replace complete report productsalesreport
-9.  Bug: Authorize.net Payment Gateway - attempt to get past intermittent submission fails.
-    Fix: Per latest Authorize.net //github repository + addition of messages (success/fails/refusals & etc).
-	 IMPORTANT: Only tested in developer Authorizenet Sandbox mode
-10. Bug: Customer Current Debt value not updating after ticket Payment form by Debt
-    Fix: PaymentInfo get and sets amended to fetch, display and write latest CurrentDebt value
-11. Bug: Customer Current Debt Date not updating after ticket Payment form by Debt
-    Fix: PaymentInfo get and sets amended to fetch, display and write latest CurrentDate value
-12. Bug: EAN-8/UPC-8 Barcode input not checked
-    Fix: Barcode checks for EAN-8/UPC-8 construct
-
-13. Change: Payment form: Given and Change background/text contrast poor. Now uses skin settings
-14. Change: Sales screen Product button default background image reduced from 48x48px to 16x16px
-15. Change: Stock Movement Category/Product panel now dynamically resizes to window
-16. Change: Stock Diary Editor Category/Product panel now dynamically resizes to window
-17. Change: Sales screen last Layaway does not now auto-appear has to be chosen from Layaway list
-18. Change: Apache Derby libraries - derby.jar and derbyclient.jar upgrade to 10.10.2.0
-19. Change: Sales screen now defaults to new ticket rather than displaying last ticket or last Layaway
-20. Change: Product Sales Finder: Constructor, method and associated SQL changes
-21. Change: rpt:extproducts Products>Report>menu option changed to Sales>Products>Reports>Product Sales: Customer
-22. Change: Ticket print to screen now resizes according to unicentaopos.properties settings
-23. Change: rptCustomersdiary now includes all transactions inc. Refunds
-
-24. Enhancement: script.totaldiscount now preserves current line properties i.e.: kitchen print
-25. Enhancement: Form-CloseCash - Added Net Sales column To jSales. Added Net Sales Field to Summary. Separated Taxes. Various other layout mod's
-26. Enhancement: Printer.PartialCash - Layout re-work. Added Net Sales values to detail and Taxes
-27. Enhancement: Product Sales Finder: list now includes Stock Units value
-28. Enhancement: Product Sales Finder: In Stock option added to ProductFilterSales - Defaults to Greater Than 0 value
-29. Enhancement: Printer.Ticket View/Preview on-screen dimensions now matches Printer.Ticket printed sizing
-30. Enhancement: Print.Ticket added Credit Card Sale info/slip print'
-31. Enhancement: Printer.Ticket + Printer.TicketPreview - Add Hostmachine/Terminal name
-32. Enhancement: User : Ticket : Customer now shown in current ticket display
-33. Enhancement: User : Ticket : Customer now shown in Layaway list
