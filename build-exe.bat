@@ -31,7 +31,7 @@ mkdir "%STAGE%" || exit /b 1
 
 REM Memes bibliotheques que start.bat (derby est charge via db.driverlib de la configuration)
 copy /y "%DIRNAME%unicentaopos.jar" "%STAGE%" >nul || exit /b 1
-for %%J in (jasperreports-4.5.1 jcommon-1.0.15 jfreechart-1.0.12 jdt-compiler-3.1.1 commons-beanutils-1.8.3 commons-digester-2.1 iText-2.1.7 poi-3.8-20120326 barcode4j-2.0 commons-codec-1.4 velocity-1.7-dep oro-2.0.8 commons-collections-3.2.1 commons-lang-2.4 bsh-core-2.0b4 RXTXcomm jpos1121 swingx-all-1.6.4 substance substance-swingx substance-extras swing-layout-1.0.4 AbsoluteLayout javacsv mysql-connector-java-5.1.26-bin axis jaxrpc saaj wsdl4j-1.5.1 commons-discovery-0.4 commons-logging-1.1) do (
+for %%J in (jasperreports-4.5.1 jcommon-1.0.15 jfreechart-1.0.12 jdt-compiler-3.1.1 commons-beanutils-1.8.3 commons-digester-2.1 iText-2.1.7 poi-3.8-20120326 barcode4j-2.0 commons-codec-1.4 velocity-1.7-dep oro-2.0.8 commons-collections-3.2.1 commons-lang-2.4 bsh-core-2.0b4 RXTXcomm jpos1121 swingx-all-1.6.4 substance substance-swingx substance-extras trident swing-layout-1.0.4 AbsoluteLayout javacsv mysql-connector-java-5.1.26-bin axis jaxrpc saaj wsdl4j-1.5.1 commons-discovery-0.4 commons-logging-1.1) do (
     copy /y "%DIRNAME%lib\%%J.jar" "%STAGE%" >nul || (echo [ERREUR] lib\%%J.jar manquant & exit /b 1)
 )
 REM Les dossiers locales\ et reports\ du classpath sont mis en jar

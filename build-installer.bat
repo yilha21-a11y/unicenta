@@ -44,7 +44,7 @@ mkdir "%STAGE%\lib" || exit /b 1
 
 REM Memes bibliotheques que start.bat
 copy /y "%ROOT%unicentaopos.jar" "%STAGE%" >nul || exit /b 1
-for %%J in (jasperreports-4.5.1 jcommon-1.0.15 jfreechart-1.0.12 jdt-compiler-3.1.1 commons-beanutils-1.8.3 commons-digester-2.1 iText-2.1.7 poi-3.8-20120326 barcode4j-2.0 commons-codec-1.4 velocity-1.7-dep oro-2.0.8 commons-collections-3.2.1 commons-lang-2.4 bsh-core-2.0b4 RXTXcomm jpos1121 swingx-all-1.6.4 substance substance-swingx substance-extras swing-layout-1.0.4 AbsoluteLayout javacsv mysql-connector-java-5.1.26-bin axis jaxrpc saaj wsdl4j-1.5.1 commons-discovery-0.4 commons-logging-1.1) do (
+for %%J in (jasperreports-4.5.1 jcommon-1.0.15 jfreechart-1.0.12 jdt-compiler-3.1.1 commons-beanutils-1.8.3 commons-digester-2.1 iText-2.1.7 poi-3.8-20120326 barcode4j-2.0 commons-codec-1.4 velocity-1.7-dep oro-2.0.8 commons-collections-3.2.1 commons-lang-2.4 bsh-core-2.0b4 RXTXcomm jpos1121 swingx-all-1.6.4 substance substance-swingx substance-extras trident swing-layout-1.0.4 AbsoluteLayout javacsv mysql-connector-java-5.1.26-bin axis jaxrpc saaj wsdl4j-1.5.1 commons-discovery-0.4 commons-logging-1.1) do (
     copy /y "%ROOT%lib\%%J.jar" "%STAGE%" >nul || (echo [ERREUR] lib\%%J.jar manquant & exit /b 1)
 )
 REM Pilote de base : charge via db.driverlib = <programme>\app\lib\derby.jar
@@ -65,6 +65,12 @@ jpackage --type app-image --name OLPOS --dest "%DIST%" ^
   --java-options "-Djava.library.path=$APPDIR\native\Windows\i368-mingw32" ^
   --java-options "-Ddirname.path=$APPDIR\\" ^
   --java-options "-splash:$APPDIR\olpos_splash.png" || exit /b 1
+
+REM Controle : aucune classe manquante pour OLPOS et son apparence (Substance)
+set JDCP=
+for %%F in ("%DIST%\OLPOS\app\*.jar" "%DIST%\OLPOS\app\lib\*.jar") do call set "JDCP=%%JDCP%%;%%~fF"
+jdeps --multi-release 17 --missing-deps -cp "%JDCP:~1%" "%DIST%\OLPOS\app\unicentaopos.jar" "%DIST%\OLPOS\app\substance.jar" "%DIST%\OLPOS\app\swingx-all-1.6.4.jar" > "%ROOT%build\missing-deps.txt" 2>&1
+findstr /c:"not found" "%ROOT%build\missing-deps.txt" >nul && (echo [ERREUR] Bibliotheques manquantes dans le programme : & type "%ROOT%build\missing-deps.txt" & exit /b 1)
 
 echo [3/3] Installateur (Inno Setup)
 "%ISCC%" /Q /DAppVersion=%VERSION% "%ROOT%installer\olpos.iss" || exit /b 1
