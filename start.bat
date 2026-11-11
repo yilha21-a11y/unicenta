@@ -41,6 +41,11 @@ set CP=%CP%;"%DIRNAME%lib/swingx-all-1.6.4.jar"
 set CP=%CP%;"%DIRNAME%lib/substance.jar"
 set CP=%CP%;"%DIRNAME%lib/substance-swingx.jar"
 set CP=%CP%;"%DIRNAME%lib/substance-extras.jar"
+REM Bibliotheques requises par le code source (mise en page des ecrans, import CSV, MySQL)
+set CP=%CP%;"%DIRNAME%lib/swing-layout-1.0.4.jar"
+set CP=%CP%;"%DIRNAME%lib/AbsoluteLayout.jar"
+set CP=%CP%;"%DIRNAME%lib/javacsv.jar"
+set CP=%CP%;"%DIRNAME%lib/mysql-connector-java-5.1.26-bin.jar"
 
 REM Apache Axis SOAP libraries.
 set CP=%CP%;"%DIRNAME%lib/axis.jar"

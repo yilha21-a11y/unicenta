@@ -10,7 +10,6 @@ import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
-import java.security.Security;
 import java.util.*;
 import javax.xml.namespace.QName;
 import javax.xml.rpc.ServiceException;
@@ -37,10 +36,10 @@ public class PaymentGatewayPayPoint implements PaymentGateway {
      * @param props */
     public PaymentGatewayPayPoint(AppProperties props) {
         
-        // Propiedades del sistema
-        System.setProperty("java.protocol.handler.pkgs", "com.sun.net.ssl.internal.www.protocol" );
-        Security.addProvider(new com.sun.net.ssl.internal.ssl.Provider());
-            
+        // Java 8+ : le support HTTPS est natif. L'ancien fournisseur interne
+        // com.sun.net.ssl.internal.ssl.Provider n'existe plus depuis Java 9
+        // et empechait la compilation (il etait inutile depuis Java 1.4).
+
         // Configuracion del pago
         m_sCommerceID = props.getProperty("payment.commerceid");
         

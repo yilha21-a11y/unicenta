@@ -1,0 +1,9 @@
+# Fichiers generes par build.bat / test.bat
+/build/
+/unicentaopos.jar
+
+# Environnement de test local (base Derby de test, configuration de test)
+/test-env/
+
+# Journaux Derby
+derby.log
