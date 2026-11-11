@@ -239,6 +239,15 @@ public class DeviceTicket {
                         pw = new PrinterWritterFile(port);
                         m_apool.put(skey, pw);
                         break;
+                    case "socket":
+                        // imprimante reseau : machine.printer.N=epson:socket,192.168.1.50:9100
+                        try {
+                            pw = new PrinterWritterSocket(port);
+                        } catch (IllegalArgumentException e) {
+                            throw new TicketPrinterException(e.getMessage(), e);
+                        }
+                        m_apool.put(skey, pw);
+                        break;
                     default:
                         throw new TicketPrinterException();
                 }

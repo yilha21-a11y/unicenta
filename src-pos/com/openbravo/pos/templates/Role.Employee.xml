@@ -35,6 +35,9 @@
 
 
 <permissions>
+    <!-- API mobile : autorise la connexion depuis l'application Android -->
+    <class name="mobile.Access"/>
+
     <class name="com.openbravo.pos.sales.JPanelTicketSales"/>
     <class name="com.openbravo.pos.sales.JPanelTicketEdits"/>
     <class name="com.openbravo.pos.customers.CustomersPayment"/>

@@ -157,6 +157,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
 
         jcboConnPrinter.addItem("serial");
         jcboConnPrinter.addItem("file");
+        jcboConnPrinter.addItem("socket");   // imprimante reseau : saisir hote:9100
 
         jcboSerialPrinter.addItem("COM1");
         jcboSerialPrinter.addItem("COM2");
@@ -189,6 +190,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
 
         jcboConnPrinter2.addItem("serial");
         jcboConnPrinter2.addItem("file");
+        jcboConnPrinter2.addItem("socket");   // imprimante reseau : saisir hote:9100
 
         jcboSerialPrinter2.addItem("COM1");
         jcboSerialPrinter2.addItem("COM2");
@@ -221,6 +223,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
 
         jcboConnPrinter3.addItem("serial");
         jcboConnPrinter3.addItem("file");
+        jcboConnPrinter3.addItem("socket");   // imprimante reseau : saisir hote:9100
 
         jcboSerialPrinter3.addItem("COM1");
         jcboSerialPrinter3.addItem("COM2");
@@ -255,6 +258,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
 
         jcboConnPrinter4.addItem("serial");
         jcboConnPrinter4.addItem("file");
+        jcboConnPrinter4.addItem("socket");   // imprimante reseau : saisir hote:9100
 
         jcboSerialPrinter4.addItem("COM1");
         jcboSerialPrinter4.addItem("COM2");
@@ -287,6 +291,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
 
         jcboConnPrinter5.addItem("serial");
         jcboConnPrinter5.addItem("file");
+        jcboConnPrinter5.addItem("socket");   // imprimante reseau : saisir hote:9100
 
         jcboSerialPrinter5.addItem("COM1");
         jcboSerialPrinter5.addItem("COM2");
@@ -319,6 +324,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
 
         jcboConnPrinter6.addItem("serial");
         jcboConnPrinter6.addItem("file");
+        jcboConnPrinter6.addItem("socket");   // imprimante reseau : saisir hote:9100
 
         jcboSerialPrinter6.addItem("COM1");
         jcboSerialPrinter6.addItem("COM2");
@@ -350,6 +356,7 @@ public class JPanelConfigPeripheral extends javax.swing.JPanel implements PanelC
 
         jcboConnDisplay.addItem("serial");
         jcboConnDisplay.addItem("file");
+        jcboConnDisplay.addItem("socket");   // imprimante reseau : saisir hote:9100
 
         jcboSerialDisplay.addItem("COM1");
         jcboSerialDisplay.addItem("COM2");

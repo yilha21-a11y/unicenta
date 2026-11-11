@@ -55,6 +55,31 @@ public class StartPOS {
      *
      * @return
      */
+    /**
+     * Applique le reglage {@code user.timezone} du fichier de configuration
+     * (ex. {@code America/Los_Angeles}). Vide ou absent : Java suit Windows.
+     * Utile quand Java et Windows n'appliquent pas les memes regles de fuseau
+     * (ex. Vancouver depuis 2026). Un identifiant inconnu est ignore (journal).
+     *
+     * @param config configuration de la caisse
+     * @return le fuseau applique, ou null si aucun
+     */
+    public static java.util.TimeZone applyTimeZone(AppProperties config) {
+        String id = config.getProperty("user.timezone");
+        if (id == null || id.trim().isEmpty()) {
+            return null;
+        }
+        id = id.trim();
+        if (!java.time.ZoneId.getAvailableZoneIds().contains(id)) {
+            logger.log(Level.WARNING, "Fuseau horaire inconnu dans user.timezone : {0} (ignore)", id);
+            return null;
+        }
+        java.util.TimeZone tz = java.util.TimeZone.getTimeZone(id);
+        java.util.TimeZone.setDefault(tz);
+        logger.log(Level.INFO, "Fuseau horaire de la caisse : {0}", id);
+        return tz;
+    }
+
     public static boolean registerApp() {
                        
         // vemos si existe alguna instancia        
@@ -84,8 +109,12 @@ public class StartPOS {
                 }
                 
                 AppConfig config = new AppConfig(args);
+                AppConfig.setActiveConfigFile(config.getConfigFile());
                 config.load();
-                
+
+                // Fuseau horaire de la caisse (optionnel, par restaurant)
+                applyTimeZone(config);
+
                 // set Locale.
                 String slang = config.getProperty("user.language");
                 String scountry = config.getProperty("user.country");

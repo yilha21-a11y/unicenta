@@ -685,8 +685,7 @@ public final class TicketInfo implements SerializableRead, Externalizable {
      */
     public String printId() {
 // We need acces to the config file        
-      AppConfig m_config =  new AppConfig(new File((System.getProperty("user.home")), AppLocal.APP_ID + ".properties"));        
-      m_config.load();
+      AppConfig m_config =  AppConfig.loadActive(); // fichier de config de CETTE instance
       String receiptSize =(m_config.getProperty("till.receiptsize"));
       String receiptPrefix =(m_config.getProperty("till.receiptprefix"));
 // we have finished with m_config so unload it      

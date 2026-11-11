@@ -52,8 +52,7 @@ public abstract class JEditorNumber extends JEditorAbstract {
         m_fmt = getFormat();
         
 // added JDL 11.05.13        
-        AppConfig m_config =  new AppConfig(new File((System.getProperty("user.home")), AppLocal.APP_ID + ".properties"));        
-        m_config.load();        
+        AppConfig m_config =  AppConfig.loadActive(); // fichier de config de CETTE instance
         priceWith00 =("true".equals(m_config.getProperty("till.pricewith00")));
         m_config=null;         
         reset();

@@ -65,9 +65,45 @@ public class AppConfig implements AppProperties {
 
         logger.log(Level.INFO, "Reading configuration file: {0}", configfile.getAbsolutePath());
     }
-    
-    private File getDefaultConfig() {
+
+    private static File getDefaultConfig() {
         return new File(new File(System.getProperty("user.home")), AppLocal.APP_ID + ".properties");
+    }
+
+    // Fichier de configuration de l'instance en cours (celui passe en argument
+    // au demarrage, sinon ~/unicentaopos.properties). Les ecrans qui relisent la
+    // configuration doivent utiliser ce fichier, pour que plusieurs instances
+    // (restaurants, base de test) aient chacune leurs propres reglages.
+    private static volatile File activeConfigFile = null;
+
+    /**
+     * Declare le fichier de configuration de l'instance en cours.
+     * Appele une fois au demarrage (StartPOS, outils de configuration).
+     * @param file fichier de configuration utilise par cette instance
+     */
+    public static void setActiveConfigFile(File file) {
+        activeConfigFile = file;
+    }
+
+    /**
+     * @return le fichier de configuration de l'instance en cours, ou le
+     *         fichier par defaut si aucun n'a ete declare
+     */
+    public static File getActiveConfigFile() {
+        File f = activeConfigFile;
+        return f == null ? getDefaultConfig() : f;
+    }
+
+    /**
+     * Relit la configuration de l'instance en cours (meme comportement que
+     * l'ancien code qui relisait ~/unicentaopos.properties a chaque usage,
+     * mais avec le bon fichier).
+     * @return une configuration chargee depuis {@link #getActiveConfigFile()}
+     */
+    public static AppConfig loadActive() {
+        AppConfig c = new AppConfig(getActiveConfigFile());
+        c.load();
+        return c;
     }
     
     /**

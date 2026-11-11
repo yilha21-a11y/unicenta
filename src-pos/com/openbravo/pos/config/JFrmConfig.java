@@ -102,6 +102,7 @@ public class JFrmConfig extends javax.swing.JFrame {
             public void run() {
                 
                 AppConfig config = new AppConfig(args);
+                AppConfig.setActiveConfigFile(config.getConfigFile());
                 config.load();    
                 
 // Set the look and feel.

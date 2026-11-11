@@ -77,9 +77,13 @@ public class JRootApp extends JPanel implements AppView {
    
     private DeviceScale m_Scale;
     private DeviceScanner m_Scanner;
-    private DeviceTicket m_TP;   
+    private DeviceTicket m_TP;
     private TicketParser m_TTP;
-    
+
+    // API mobile (desactivee par defaut, voir com.openbravo.pos.api.ApiConfig)
+    private com.openbravo.pos.api.ApiServer m_apiServer;
+    private Session m_apiSession;
+
     private Map<String, BeanFactory> m_aBeanFactories;
     
     private JPrincipalApp m_principalapp = null;
@@ -243,7 +247,10 @@ public class JRootApp extends JPanel implements AppView {
         // Inicializamos 
         m_TTP = new TicketParser(getDeviceTicket(), m_dlSystem);
         printerStart();
-        
+
+        // API mobile : demarree seulement si api.enabled=true dans la configuration
+        startMobileApi();
+
         // Inicializamos la bascula
         m_Scale = new DeviceScale(this, m_props);
                
@@ -314,6 +321,44 @@ public class JRootApp extends JPanel implements AppView {
     }
    
    
+    /**
+     * Demarre l'API mobile si elle est activee (api.enabled=true).
+     * Un echec (port deja utilise, reglage invalide...) n'empeche pas la caisse
+     * de fonctionner : un avertissement est affiche et l'API reste arretee.
+     */
+    private void startMobileApi() {
+        try {
+            com.openbravo.pos.api.ApiConfig apiConfig = new com.openbravo.pos.api.ApiConfig(m_props);
+            if (!apiConfig.isEnabled()) {
+                return;
+            }
+            // Connexion dediee, via le pilote deja charge (pas de second moteur Derby)
+            m_apiSession = AppViewConnection.createAdditionalSession(m_props);
+            // Bons cuisine et additions : memes imprimantes et meme moteur que la caisse
+            m_apiServer = new com.openbravo.pos.api.ApiServer(apiConfig,
+                    new com.openbravo.pos.api.MobileDataService(m_apiSession),
+                    new com.openbravo.pos.api.TillPrinter(m_TP, m_TTP, m_props));
+            m_apiServer.start();
+        } catch (BasicException | IOException | RuntimeException e) {
+            java.util.logging.Logger.getLogger(JRootApp.class.getName())
+                    .log(java.util.logging.Level.WARNING, "API mobile non demarree", e);
+            stopMobileApi();
+            JMessageDialog.showMessage(this, new MessageInf(MessageInf.SGN_WARNING,
+                    AppLocal.getIntString("message.mobileapierror"), e));
+        }
+    }
+
+    private void stopMobileApi() {
+        if (m_apiServer != null) {
+            m_apiServer.stop();
+            m_apiServer = null;
+        }
+        if (m_apiSession != null) {
+            m_apiSession.close();
+            m_apiSession = null;
+        }
+    }
+
     private String readDataBaseVersion() {
         try {
             return m_dlSystem.findVersion();
@@ -333,6 +378,8 @@ public class JRootApp extends JPanel implements AppView {
 
             // apago el visor
             m_TP.getDeviceDisplay().clearVisor();
+            // arret de l'API mobile avant la fermeture de la base
+            stopMobileApi();
             // me desconecto de la base de datos.
             session.close();
 

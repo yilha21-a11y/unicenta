@@ -72,7 +72,34 @@ public class AppViewConnection {
             throw new BasicException(AppLocal.getIntString("message.databasedrivererror"), e);
         } catch (SQLException eSQL) {
             throw new BasicException(AppLocal.getIntString("message.databaseconnectionerror"), eSQL);
-        }   
+        }
+    }
+
+    /**
+     * Ouvre une connexion SUPPLEMENTAIRE a la meme base, en reutilisant le
+     * pilote JDBC deja enregistre par {@link #createSession(AppProperties)}.
+     *
+     * A utiliser par les services qui tournent dans le meme programme que la
+     * caisse (API mobile) : appeler createSession() une seconde fois chargerait
+     * une deuxieme copie du pilote dans un autre ClassLoader, et avec Derby
+     * embarque deux moteurs ouvriraient la meme base (risque de corruption).
+     *
+     * @param props configuration de la caisse
+     * @return une nouvelle session sur sa propre connexion
+     * @throws BasicException si la connexion echoue
+     */
+    public static Session createAdditionalSession(AppProperties props) throws BasicException {
+        try {
+            String sDBUser = props.getProperty("db.user");
+            String sDBPassword = props.getProperty("db.password");
+            if (sDBUser != null && sDBPassword != null && sDBPassword.startsWith("crypt:")) {
+                AltEncrypter cypher = new AltEncrypter("cypherkey" + sDBUser);
+                sDBPassword = cypher.decrypt(sDBPassword.substring(6));
+            }
+            return new Session(props.getProperty("db.URL"), sDBUser, sDBPassword);
+        } catch (SQLException eSQL) {
+            throw new BasicException(AppLocal.getIntString("message.databaseconnectionerror"), eSQL);
+        }
     }
 
     private static boolean isJavaWebStart() {

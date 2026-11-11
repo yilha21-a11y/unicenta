@@ -35,7 +35,7 @@ public class PropertyUtils {
     }
 
     private File getDefaultConfig() {
-        return new File(new File(".\\"), "unicentaopos.properties");
+        return com.openbravo.pos.forms.AppConfig.getActiveConfigFile();
     }
 
     private void load() {

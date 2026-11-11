@@ -62,9 +62,8 @@
 
 
         #if (${tickettext.place} != ${place})
-        <line>
-           <text align="left" length="15">Table:</text>
-           <text>${place}</text>
+        <line size = "1">
+           <text bold = "true" align="left" length="42">${place}</text>
         </line>
         #end
         
@@ -86,6 +85,12 @@
                     <text align ="left" length="37">${ticketline.printName()}</text>
                 #end
             </line>
+            <!-- Note cuisine de la ligne (caisse : bouton note ; telephone : champ note) -->
+            #if ($ticketline.getProperty("notes"))
+                <line>
+                    <text align ="left" length="42">     * ${ticketline.getProperty("notes")}</text>
+                </line>
+            #end
             <!-- Add the following lines only for 2.30 Attributes -->
               #if ($ticketline.productAttSetInstId)
                 <line>

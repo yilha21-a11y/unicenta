@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    uniCenta oPOS - Addition provisoire (demandee depuis un telephone).
+    Licence GPL v3 (voir LICENSE.md).
+
+    Ce n'est PAS un recu : aucun paiement n'est enregistre.
+    Pour personnaliser ce modele : Administration > Ressources > nouvelle
+    ressource texte nommee "Printer.TicketBill" (elle remplace ce fichier).
+
+    Variables : $ticket (commande), $place (table), $billtaxes (liste de
+    {name, base, amount}), $printedat (date et heure d'impression).
+-->
+<output>
+    <ticket>
+        <line></line>
+        <line size="1">
+            <text align="center" bold="true" length="42">ADDITION PROVISOIRE</text>
+        </line>
+        <line>
+            <text align="center" length="42">Ce document n'est pas un recu</text>
+        </line>
+        <line></line>
+        <line>
+            <text align="left" length="12">Table</text>
+            <text bold="true">${place}</text>
+        </line>
+        <line>
+            <text align="left" length="12">Serveur</text>
+            <text>${ticket.printUser()}</text>
+        </line>
+        <line>
+            <text align="left" length="12">Imprimee le</text>
+            <text>${printedat}</text>
+        </line>
+        <line></line>
+        <line>
+            <text align="left" length="24">Article</text>
+            <text align="right" length="6">Qte</text>
+            <text align="right" length="12">Montant</text>
+        </line>
+        <line>
+            <text>------------------------------------------</text>
+        </line>
+#foreach ($ticketline in $ticket.getLines())
+        <line>
+            <text align="left" length="24">${ticketline.printName()}</text>
+            <text align="right" length="6">${ticketline.printMultiply()}</text>
+            <text align="right" length="12">${ticketline.printValue()}</text>
+        </line>
+#end
+        <line>
+            <text>------------------------------------------</text>
+        </line>
+        <line>
+            <text align="left" length="22">Sous-total (HT)</text>
+            <text align="right" length="20">${ticket.printSubTotal()}</text>
+        </line>
+#foreach ($tax in $billtaxes)
+        <line>
+            <text align="left" length="22">${tax.name}</text>
+            <text align="right" length="20">${tax.amount}</text>
+        </line>
+#end
+        <line size="1">
+            <text align="left" bold="true" length="16">TOTAL</text>
+            <text align="right" bold="true" length="26">${ticket.printTotal()}</text>
+        </line>
+        <line></line>
+        <line>
+            <text align="center" length="42">Merci de votre visite</text>
+        </line>
+        <line></line>
+    </ticket>
+</output>

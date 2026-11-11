@@ -81,7 +81,13 @@ public class JTicketsBagRestaurantMap extends JTicketsBag {
     private String waiterDetails;
     private String customerDetails;
     private String tableName;
-    
+
+    // Synchronisation avec l'API mobile : verrou de table + version de commande
+    private final TableTicketStore store;
+    private final TableLocks locks = TableLocks.get();
+    private long m_currentVersion;          // version de la commande ouverte a l'ecran
+    private byte[] m_currentOpenBytes;      // contenu a l'ouverture (pour ne pas reecrire sans changement)
+
     /** Creates new form JTicketsBagRestaurant
      * @param app
      * @param panelticket */
@@ -94,7 +100,25 @@ public class JTicketsBagRestaurantMap extends JTicketsBag {
         
         dlReceipts = (DataLogicReceipts) app.getBean("com.openbravo.pos.sales.DataLogicReceipts");
         dlSales = (DataLogicSales) m_App.getBean("com.openbravo.pos.forms.DataLogicSales");
-        
+        store = new TableTicketStore(app.getSession());
+
+        // Une commande modifiee depuis un telephone : rafraichir le plan de salle
+        // (seulement s'il est affiche, jamais pendant qu'une table est ouverte)
+        locks.addListener(new TableLocks.Listener() {
+            @Override
+            public void tableChanged(String tableId) {
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (m_PlaceCurrent == null && isShowing()) {
+                            loadTickets();
+                            printState();
+                        }
+                    }
+                });
+            }
+        });
+
         m_restaurantmap = new JTicketsBagRestaurant(app, this);
         m_PlaceCurrent = null;
         m_PlaceClipboard = null;
@@ -235,15 +259,9 @@ public class JTicketsBagRestaurantMap extends JTicketsBag {
             m_PlaceClipboard = null;
             customer = null;
 
-            // guardamos el ticket
+            // guardamos el ticket (avec controle de version) et liberation de la table
             if (m_PlaceCurrent != null) {
-                            
-                try {
-                    dlReceipts.updateSharedTicket(m_PlaceCurrent.getId(), m_panelticket.getActiveTicket(),m_panelticket.getActiveTicket().getPickupId());
-                } catch (BasicException e) {
-                    new MessageInf(e).show(this);
-                }                                  
- 
+                saveAndReleaseCurrentPlace();
                 m_PlaceCurrent = null;
             }
 
@@ -292,13 +310,9 @@ public class JTicketsBagRestaurantMap extends JTicketsBag {
         
         // guardamos el ticket
         if (m_PlaceCurrent != null) {
-                          
-            try {
-                dlReceipts.updateSharedTicket(m_PlaceCurrent.getId(), m_panelticket.getActiveTicket(),m_panelticket.getActiveTicket().getPickupId());
-            } catch (BasicException e) {
-                new MessageInf(e).show(this);
-            }      
-            
+
+            saveAndReleaseCurrentPlace();
+
             // me guardo el ticket que quiero copiar.
             m_PlaceClipboard = m_PlaceCurrent;    
             
@@ -345,13 +359,7 @@ public class JTicketsBagRestaurantMap extends JTicketsBag {
         
         // guardamos el ticket
         if (m_PlaceCurrent != null) {
-                         
-            try {
-                    dlReceipts.updateSharedTicket(m_PlaceCurrent.getId(), m_panelticket.getActiveTicket(),m_panelticket.getActiveTicket().getPickupId());                
-            } catch (BasicException e) {
-                new MessageInf(e).show(this); // maybe other guy deleted it
-            }              
-
+            saveAndReleaseCurrentPlace();
             m_PlaceCurrent = null;
         }
         
@@ -390,18 +398,28 @@ public class JTicketsBagRestaurantMap extends JTicketsBag {
     public void deleteTicket() {
         
         if (m_PlaceCurrent != null) {
-            
+
             String id = m_PlaceCurrent.getId();
+            boolean deleted = false;
             try {
-                dlReceipts.deleteSharedTicket(id);
+                store.delete(id, m_currentVersion);
+                deleted = true;
+            } catch (OrderConflictException c) {
+                // Modifiee sur un autre poste pendant que la table etait ouverte ici :
+                // on la conserve et on previent, plutot que de perdre des lignes.
+                JOptionPane.showMessageDialog(this,
+                        AppLocal.getIntString("message.orderkeptafterconflict", m_PlaceCurrent.getName(), c.getMessage()),
+                        AppLocal.getIntString("message.orderconflicttitle"), JOptionPane.WARNING_MESSAGE);
             } catch (BasicException e) {
                 new MessageInf(e).show(this);
-            }       
-            
-            m_PlaceCurrent.setPeople(false);
-            
+            } finally {
+                locks.releaseTill(id);
+            }
+
+            m_PlaceCurrent.setPeople(!deleted);
+
             m_PlaceCurrent = null;
-        }        
+        }
         
         printState();     
         m_panelticket.setActiveTicket(null, null); 
@@ -534,210 +552,365 @@ public class JTicketsBagRestaurantMap extends JTicketsBag {
         
     }   
     
-    private TicketInfo getTicketInfo(Place place) {
+    // =====================================================================
+    // Synchronisation avec l'API mobile
+    // =====================================================================
 
+    private String tillUserName() {
+        AppUser u = m_App.getAppUserView().getUser();
+        return u == null ? "caisse" : u.getName();
+    }
+
+    /**
+     * Prend le verrou de la table pour la caisse. Si un telephone est en train
+     * de la modifier, attend un court instant puis affiche un message.
+     */
+    private boolean lockForTill(Place place) {
         try {
-            return dlReceipts.getSharedTicket(place.getId());
-        } catch (BasicException e) {
-            new MessageInf(e).show(JTicketsBagRestaurantMap.this);
+            if (locks.acquireTill(place.getId(), tillUserName(), 3000)) {
+                return true;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        new MessageInf(MessageInf.SGN_WARNING,
+                AppLocal.getIntString("message.tablebusymobile", place.getName())).show(this);
+        return false;
+    }
+
+    private static byte[] serialize(TicketInfo t) {
+        try {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            try (java.io.ObjectOutputStream out = new java.io.ObjectOutputStream(bytes)) {
+                out.writeObject(t);
+            }
+            return bytes.toByteArray();
+        } catch (java.io.IOException e) {
             return null;
         }
     }
-    
-    private void setActivePlace(Place place, TicketInfo ticket) {
+
+    /**
+     * Enregistre la commande ouverte (si elle a change) en verifiant que
+     * personne ne l'a modifiee entre-temps, puis libere la table.
+     */
+    private void saveAndReleaseCurrentPlace() {
+        Place place = m_PlaceCurrent;
+        TicketInfo ticket = m_panelticket.getActiveTicket();
+        try {
+            if (ticket == null) {
+                return;
+            }
+            byte[] now = serialize(ticket);
+            if (now != null && m_currentOpenBytes != null && Arrays.equals(now, m_currentOpenBytes)) {
+                return; // aucune modification : on ne cree pas de nouvelle version
+            }
+            m_currentVersion = store.update(place.getId(), ticket, m_currentVersion,
+                    tillUserName(), TableLocks.Source.CAISSE.label());
+        } catch (OrderConflictException c) {
+            resolveSaveConflict(place, ticket, c);
+        } catch (BasicException e) {
+            new MessageInf(e).show(this);
+        } finally {
+            m_currentOpenBytes = null;
+            locks.releaseTill(place.getId());
+        }
+    }
+
+    /**
+     * La commande a ete modifiee sur un autre poste pendant qu'elle etait
+     * ouverte ici. Rien n'a ete enregistre : on demande quoi faire, le choix
+     * par defaut etant de garder la version deja enregistree.
+     */
+    private void resolveSaveConflict(Place place, TicketInfo mine, OrderConflictException c) {
+        TableTicketStore.Snapshot cur = c.getCurrent();
+        String title = AppLocal.getIntString("message.orderconflicttitle");
+        String text = AppLocal.getIntString("message.orderconflicttext", place.getName(), c.getMessage());
+        try {
+            if (cur != null) {
+                Object[] options = {
+                    AppLocal.getIntString("button.orderkeepsaved"),
+                    AppLocal.getIntString("button.orderoverwrite")};
+                int r = JOptionPane.showOptionDialog(this, text, title, JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+                if (r == 1) {
+                    store.update(place.getId(), mine, cur.getVersion(), tillUserName(), TableLocks.Source.CAISSE.label());
+                }
+            } else {
+                Object[] options = {
+                    AppLocal.getIntString("button.orderdiscardmine"),
+                    AppLocal.getIntString("button.orderrecreate")};
+                int r = JOptionPane.showOptionDialog(this, text, title, JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+                if (r == 1) {
+                    store.create(place.getId(), mine, tillUserName(), TableLocks.Source.CAISSE.label());
+                    place.setPeople(true);
+                } else {
+                    place.setPeople(false);
+                }
+            }
+        } catch (OrderConflictException again) {
+            JOptionPane.showMessageDialog(this, AppLocal.getIntString("message.orderconflicttext",
+                    place.getName(), again.getMessage()), title, JOptionPane.WARNING_MESSAGE);
+        } catch (BasicException e) {
+            new MessageInf(e).show(this);
+        }
+    }
+
+    private TableTicketStore.Snapshot loadSnapshot(Place place) throws BasicException {
+        return store.load(place.getId());
+    }
+
+    /** Affiche la commande d'une table que la caisse tient deja (verrou pris). */
+    private void setActivePlace(Place place, TicketInfo ticket, long version) {
         m_PlaceCurrent = place;
+        m_currentVersion = version;
+        m_currentOpenBytes = serialize(ticket);
         m_panelticket.setActiveTicket(ticket, m_PlaceCurrent.getName());
     }
 
     private void showView(String view) {
         CardLayout cl = (CardLayout)(getLayout());
-        cl.show(this, view);  
+        cl.show(this, view);
     }
-    
+
     private class MyActionListener implements ActionListener {
-        
+
         private final Place m_place;
-        
+
         public MyActionListener(Place place) {
             m_place = place;
         }
-        
+
         @Override
-        public void actionPerformed(ActionEvent evt) {    
-            
-            if (m_PlaceClipboard == null) {  
-                
+        public void actionPerformed(ActionEvent evt) {
+            if (m_PlaceClipboard == null) {
                 if (customer == null) {
-                    // tables
-                
-                    // check if the sharedticket is the same
-                    TicketInfo ticket = getTicketInfo(m_place);
-
-                    // check
-                    if (ticket == null && !m_place.hasPeople()) {
-                        // Empty table and checked
-
-                        // table occupied
-                        ticket = new TicketInfo();
-                        try {
-//Create a new pickup code because this is a new ticket                            
-                        dlReceipts.insertSharedTicket(m_place.getId(), ticket, ticket.getPickupId());               
-                        } catch (BasicException e) {
-                            new MessageInf(e).show(JTicketsBagRestaurantMap.this); // Glup. But It was empty.
-                        }                     
-                        m_place.setPeople(true);                   
-                        setActivePlace(m_place, ticket);   
-
-                    } else if (ticket == null  && m_place.hasPeople()) {
-                        // The table is now empty
-                        new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tableempty")).show(JTicketsBagRestaurantMap.this);
-                        m_place.setPeople(false); // fixed  
-                    } else if (ticket != null && !m_place.hasPeople()) {
-                        // The table is now full
-                        new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tablefull")).show(JTicketsBagRestaurantMap.this);       
-                        m_place.setPeople(true);                        
-
-                    } else { // both != null
-                        // Full table                
-                        // m_place.setPeople(true); // already true                           
-                        setActivePlace(m_place, ticket);                      
-                       
-                    }
+                    openTable();
                 } else {
-                    // receiving customer.
-                    
-                    // check if the sharedticket is the same
-                    TicketInfo ticket = getTicketInfo(m_place);
-                    if (ticket == null) {
-                        // receive the customer
-                        // table occupied
-                        ticket = new TicketInfo();
-                        
-                        try {
-                            ticket.setCustomer(customer.getId() == null
-                                    ? null
-                                    : dlSales.loadCustomerExt(customer.getId()));
-                        } catch (BasicException e) {
-                            MessageInf msg = new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.cannotfindcustomer"), e);
-                            msg.show(JTicketsBagRestaurantMap.this);            
-                        }                     
-                        
-                        try {      
-                            dlReceipts.insertSharedTicket(m_place.getId(), ticket, ticket.getPickupId());    
-                        } catch (BasicException e) {
-                            new MessageInf(e).show(JTicketsBagRestaurantMap.this); // Glup. But It was empty.
-                        }                     
-                        m_place.setPeople(true);                                             
-                        m_PlaceClipboard = null;
-                        customer = null;     
-                        
-                        setActivePlace(m_place, ticket);                        
-                    } else {
-                        // TODO: msg: The table is now full
-                        new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tablefull")).show(JTicketsBagRestaurantMap.this);       
-                        m_place.setPeople(true);                      
-                        m_place.getButton().setEnabled(false);
-                    }
+                    receiveCustomer();
                 }
             } else {
-                // check if the sharedticket is the same
-                TicketInfo ticketclip = getTicketInfo(m_PlaceClipboard);
+                moveOrMerge();
+            }
+        }
 
-                if (ticketclip == null) {
+        /** Ouverture d'une table depuis le plan de salle. */
+        private void openTable() {
+            if (!lockForTill(m_place)) {
+                return;
+            }
+            boolean opened = false;
+            try {
+                TableTicketStore.Snapshot snap = loadSnapshot(m_place);
+                if (snap == null && !m_place.hasPeople()) {
+                    // Table libre : nouvelle commande
+                    TicketInfo ticket = new TicketInfo();
+                    try {
+                        long v = store.create(m_place.getId(), ticket, tillUserName(), TableLocks.Source.CAISSE.label());
+                        m_place.setPeople(true);
+                        setActivePlace(m_place, ticket, v);
+                        opened = true;
+                    } catch (OrderConflictException c) {
+                        // creee au meme moment ailleurs (telephone ou autre poste)
+                        m_place.setPeople(true);
+                        new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tablefull")).show(JTicketsBagRestaurantMap.this);
+                    }
+                } else if (snap == null && m_place.hasPeople()) {
+                    // The table is now empty
                     new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tableempty")).show(JTicketsBagRestaurantMap.this);
-                    m_PlaceClipboard.setPeople(false);
+                    m_place.setPeople(false); // fixed
+                } else if (snap != null && !m_place.hasPeople()) {
+                    // The table is now full
+                    new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tablefull")).show(JTicketsBagRestaurantMap.this);
+                    m_place.setPeople(true);
+                } else {
+                    // Table occupee : on ouvre la version la plus recente
+                    setActivePlace(m_place, snap.getTicket(), snap.getVersion());
+                    opened = true;
+                }
+            } catch (BasicException e) {
+                new MessageInf(e).show(JTicketsBagRestaurantMap.this);
+            } finally {
+                if (!opened) {
+                    locks.releaseTill(m_place.getId());
+                }
+            }
+        }
+
+        /** Installation d'un client (reservation) sur une table libre. */
+        private void receiveCustomer() {
+            if (!lockForTill(m_place)) {
+                return;
+            }
+            boolean opened = false;
+            try {
+                TableTicketStore.Snapshot snap = loadSnapshot(m_place);
+                if (snap == null) {
+                    TicketInfo ticket = new TicketInfo();
+                    try {
+                        ticket.setCustomer(customer.getId() == null
+                                ? null
+                                : dlSales.loadCustomerExt(customer.getId()));
+                    } catch (BasicException e) {
+                        MessageInf msg = new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.cannotfindcustomer"), e);
+                        msg.show(JTicketsBagRestaurantMap.this);
+                    }
+                    try {
+                        long v = store.create(m_place.getId(), ticket, tillUserName(), TableLocks.Source.CAISSE.label());
+                        m_place.setPeople(true);
+                        m_PlaceClipboard = null;
+                        customer = null;
+                        setActivePlace(m_place, ticket, v);
+                        opened = true;
+                    } catch (OrderConflictException c) {
+                        m_place.setPeople(true);
+                        new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tablefull")).show(JTicketsBagRestaurantMap.this);
+                    }
+                } else {
+                    new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tablefull")).show(JTicketsBagRestaurantMap.this);
+                    m_place.setPeople(true);
+                    m_place.getButton().setEnabled(false);
+                }
+            } catch (BasicException e) {
+                new MessageInf(e).show(JTicketsBagRestaurantMap.this);
+            } finally {
+                if (!opened) {
+                    locks.releaseTill(m_place.getId());
+                }
+            }
+        }
+
+        /** Deplacement (vers une table libre) ou fusion (vers une table occupee). */
+        private void moveOrMerge() {
+            Place source = m_PlaceClipboard;
+            if (!lockForTill(source)) {
+                return;
+            }
+            boolean sourceKept = false;   // true si la caisse garde la table source ouverte
+            try {
+                TableTicketStore.Snapshot clip = loadSnapshot(source);
+                if (clip == null) {
+                    new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tableempty")).show(JTicketsBagRestaurantMap.this);
+                    source.setPeople(false);
                     m_PlaceClipboard = null;
                     customer = null;
                     printState();
-                } else {
-                    // tenemos que copiar el ticket del clipboard
-                    if (m_PlaceClipboard == m_place) {
-                        // the same button. Canceling.
-                        Place placeclip = m_PlaceClipboard;                       
-                        m_PlaceClipboard = null;
-                        customer = null;
-                        printState();
-                        setActivePlace(placeclip, ticketclip);
-                    } else if (!m_place.hasPeople()) {
+                    return;
+                }
+                TicketInfo ticketclip = clip.getTicket();
+
+                if (source == m_place) {
+                    // the same button. Canceling.
+                    m_PlaceClipboard = null;
+                    customer = null;
+                    printState();
+                    setActivePlace(source, ticketclip, clip.getVersion());
+                    sourceKept = true;
+                    return;
+                }
+
+                if (!lockForTill(m_place)) {
+                    return;
+                }
+                boolean targetOpened = false;
+                try {
+                    TableTicketStore.Snapshot target = loadSnapshot(m_place);
+                    if (!m_place.hasPeople()) {
                         // Moving the receipt to an empty table
-                        TicketInfo ticket = getTicketInfo(m_place);
-////
-                        if (ticket == null) {
+                        if (target == null) {
+                            long v;
                             try {
-                                dlReceipts.insertSharedTicket(m_place.getId(), ticketclip, ticketclip.getPickupId());//dlSales.getNextPickupIndex());
-                                m_place.setPeople(true);                              
-                                dlReceipts.deleteSharedTicket(m_PlaceClipboard.getId());
-                                m_PlaceClipboard.setPeople(false);
-                            } catch (BasicException e) {
-                                new MessageInf(e).show(JTicketsBagRestaurantMap.this); // Glup. But It was empty.
+                                v = store.create(m_place.getId(), ticketclip, tillUserName(), TableLocks.Source.CAISSE.label());
+                            } catch (OrderConflictException c) {
+                                m_place.setPeople(true);
+                                new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tablefull")).show(JTicketsBagRestaurantMap.this);
+                                return;
                             }
+                            m_place.setPeople(true);
+                            deleteMovedSource(source, clip.getVersion());
 
                             m_PlaceClipboard = null;
                             customer = null;
                             printState();
-
-                            // No hace falta preguntar si estaba bloqueado porque ya lo estaba antes
-                            // activamos el ticket seleccionado
-                            setActivePlace(m_place, ticketclip);                            
-                            
+                            setActivePlace(m_place, ticketclip, v);
+                            targetOpened = true;
                         } else {
                             // Full table
                             new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tablefull")).show(JTicketsBagRestaurantMap.this);
-                            m_PlaceClipboard.setPeople(true);
+                            m_place.setPeople(true);
                             printState();
                         }
-                    } else {                          
+                    } else {
                         // Merge the lines with the receipt of the table
-                        TicketInfo ticket = getTicketInfo(m_place);
-
-                        if (ticket == null) {
-                            // The table is now empty
+                        if (target == null) {
                             new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.tableempty")).show(JTicketsBagRestaurantMap.this);
-                            m_place.setPeople(false); // fixed                        
-                        } else {
-                            //asks if you want to merge tables
-                            if (JOptionPane.showConfirmDialog(JTicketsBagRestaurantMap.this, AppLocal.getIntString("message.mergetablequestion"), AppLocal.getIntString("message.mergetable"), JOptionPane.YES_NO_OPTION)
-                                    == JOptionPane.YES_OPTION){                                 
-                                // merge lines ticket
-
-                                try {
-                                    dlReceipts.deleteSharedTicket(m_PlaceClipboard.getId());
-                                    m_PlaceClipboard.setPeople(false);
-                                    if (ticket.getCustomer() == null) {
-                                    ticket.setCustomer(ticketclip.getCustomer());
-                                    }
-                                    for(TicketLineInfo line : ticketclip.getLines()) {
-                                        ticket.addLine(line);
-                                    }
-                                    dlReceipts.updateSharedTicket(m_place.getId(), ticket, ticket.getPickupId());
-                                } catch (BasicException e) {
-                                    new MessageInf(e).show(JTicketsBagRestaurantMap.this); // Glup. But It was empty.
-                                }
-
-                                m_PlaceClipboard = null;
-                                customer = null;
-//clear the original table data
-                                restDB.clearCustomerNameInTable(restDB.getTableDetails(ticketclip.getId()));
-                                restDB.clearWaiterNameInTable(restDB.getTableDetails(ticketclip.getId()));
-                                restDB.clearTableMovedFlag(restDB.getTableDetails(ticketclip.getId()));
-                                restDB.clearTicketIdInTable(restDB.getTableDetails(ticketclip.getId()));
-                                
-                     //           restDB.clearTableMovedFlag("");
-                                
-                                printState();
-
-                                setActivePlace(m_place, ticket);
-                            } else { 
-                                // Cancel merge operations
-                                Place placeclip = m_PlaceClipboard;                       
-                                m_PlaceClipboard = null;
-                                customer = null;
-                                printState();
-                                setActivePlace(placeclip, ticketclip);                                   
+                            m_place.setPeople(false); // fixed
+                        } else if (JOptionPane.showConfirmDialog(JTicketsBagRestaurantMap.this, AppLocal.getIntString("message.mergetablequestion"), AppLocal.getIntString("message.mergetable"), JOptionPane.YES_NO_OPTION)
+                                    == JOptionPane.YES_OPTION) {
+                            TicketInfo ticket = target.getTicket();
+                            if (ticket.getCustomer() == null) {
+                                ticket.setCustomer(ticketclip.getCustomer());
                             }
-                        }                                
+                            for (TicketLineInfo line : ticketclip.getLines()) {
+                                ticket.addLine(line);
+                            }
+                            long v;
+                            try {
+                                v = store.update(m_place.getId(), ticket, target.getVersion(), tillUserName(), TableLocks.Source.CAISSE.label());
+                            } catch (OrderConflictException c) {
+                                JOptionPane.showMessageDialog(JTicketsBagRestaurantMap.this,
+                                        AppLocal.getIntString("message.orderconflicttext", m_place.getName(), c.getMessage()),
+                                        AppLocal.getIntString("message.orderconflicttitle"), JOptionPane.WARNING_MESSAGE);
+                                return;
+                            }
+                            deleteMovedSource(source, clip.getVersion());
+
+                            m_PlaceClipboard = null;
+                            customer = null;
+                            //clear the original table data
+                            restDB.clearCustomerNameInTable(restDB.getTableDetails(ticketclip.getId()));
+                            restDB.clearWaiterNameInTable(restDB.getTableDetails(ticketclip.getId()));
+                            restDB.clearTableMovedFlag(restDB.getTableDetails(ticketclip.getId()));
+                            restDB.clearTicketIdInTable(restDB.getTableDetails(ticketclip.getId()));
+                            printState();
+
+                            setActivePlace(m_place, ticket, v);
+                            targetOpened = true;
+                        } else {
+                            // Cancel merge operations
+                            m_PlaceClipboard = null;
+                            customer = null;
+                            printState();
+                            setActivePlace(source, ticketclip, clip.getVersion());
+                            sourceKept = true;
+                        }
+                    }
+                } finally {
+                    if (!targetOpened) {
+                        locks.releaseTill(m_place.getId());
                     }
                 }
+            } catch (BasicException e) {
+                new MessageInf(e).show(JTicketsBagRestaurantMap.this);
+            } finally {
+                if (!sourceKept) {
+                    locks.releaseTill(source.getId());
+                }
+            }
+        }
+
+        /** Supprime la commande de la table d'origine apres un deplacement / une fusion. */
+        private void deleteMovedSource(Place source, long version) throws BasicException {
+            try {
+                store.delete(source.getId(), version);
+                source.setPeople(false);
+            } catch (OrderConflictException c) {
+                // modifiee sur un autre poste entre-temps : on la garde et on previent
+                source.setPeople(true);
+                JOptionPane.showMessageDialog(JTicketsBagRestaurantMap.this,
+                        AppLocal.getIntString("message.orderkeptafterconflict", source.getName(), c.getMessage()),
+                        AppLocal.getIntString("message.orderconflicttitle"), JOptionPane.WARNING_MESSAGE);
             }
         }
     }
