@@ -62,7 +62,7 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <version>1.18.6</version>
+      <version>1.18.30</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -320,12 +320,20 @@
       <groupId>com.unicenta</groupId>
       <artifactId>unicenta-plugins</artifactId>
       <version>1.1</version>
+      <!-- OLPOS : le plugin tire l'ancien uniCenta 4.6.1 complet (doublons de classes)
+           et uk.co.pos_apps:openbravo, introuvable dans les depots publics -->
+      <exclusions>
+        <exclusion>
+          <groupId>com.unicenta</groupId>
+          <artifactId>unicentaopos</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>uk.co.pos_apps</groupId>
+          <artifactId>openbravo</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
-    <dependency>
-      <groupId>uk.co.pos_apps</groupId>
-      <artifactId>openbravo</artifactId>
-      <version>1.0-SNAPSHOT</version>
-    </dependency>
+    <!-- OLPOS : uk.co.pos_apps:openbravo (service posApps) introuvable dans les depots publics ; retire -->
     <dependency>
       <groupId>com.gluonhq</groupId>
       <artifactId>charm-glisten</artifactId>
