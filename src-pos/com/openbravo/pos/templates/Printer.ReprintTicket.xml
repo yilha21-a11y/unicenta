@@ -27,6 +27,18 @@
 </display>
 
 <ticket>
+        <!-- OLPOS:order-number : reimpression (DUPLICATA) avec le numero d'origine -->
+        <line size="3"><text align="center" bold="true" length="21">DUPLICATA</text></line>
+#if ($ticket.getProperty("order.number"))
+        <line size="3"><text align="center" bold="true" length="21">COMMANDE N° ${ticket.getProperty("order.number")}</text></line>
+        <line><text align="center" length="42">${ticket.printDate()}</text></line>
+#if ($place && "$place" != "")
+        <line size="1"><text align="center" bold="true" length="42">TABLE : ${place}</text></line>
+#else
+        <line size="1"><text align="center" bold="true" length="42">A EMPORTER</text></line>
+#end
+#end
+        <line></line>
 	<image>Printer.Ticket.Logo</image>
 	<line></line>
 

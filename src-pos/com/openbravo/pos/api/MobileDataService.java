@@ -241,11 +241,15 @@ public class MobileDataService {
                 new SerializerReadBasic(new Datas[] {Datas.STRING, Datas.STRING, Datas.INT, Datas.INT,
                     Datas.STRING, Datas.STRING, Datas.STRING})).list();
         List<Object[]> open = new StaticSentence(session,
-                "SELECT ID FROM SHAREDTICKETS", null,
-                new SerializerReadBasic(new Datas[] {Datas.STRING})).list();
+                "SELECT ID, CONTENT FROM SHAREDTICKETS", null,
+                new SerializerReadBasic(new Datas[] {Datas.STRING, Datas.SERIALIZABLE})).list();
         Set<String> occupied = new HashSet<>();
+        Map<String, Integer> numbers = new java.util.HashMap<>();
         for (Object[] r : open) {
             occupied.add((String) r[0]);
+            if (r[1] instanceof com.openbravo.pos.ticket.TicketInfo) {
+                numbers.put((String) r[0], com.openbravo.pos.sales.OrderNumbers.numberOf((com.openbravo.pos.ticket.TicketInfo) r[1]));
+            }
         }
 
         Map<String, List<Map<String, Object>>> tablesByFloor = new LinkedHashMap<>();
@@ -256,6 +260,7 @@ public class MobileDataService {
             t.put("x", r[2]);
             t.put("y", r[3]);
             t.put("occupied", occupied.contains((String) r[0]));
+            t.put("orderNumber", numbers.get((String) r[0]));
             t.put("customer", r[5]);
             t.put("waiter", r[6]);
             List<Map<String, Object>> list = tablesByFloor.get((String) r[4]);

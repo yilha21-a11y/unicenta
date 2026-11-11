@@ -507,6 +507,27 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
         return m_oTicket;
     }
     
+    /** Modeles qui affichent le numero de commande (ticket client, bon cuisine, addition). */
+    private static final java.util.Set<String> NUMBERED_PRINTS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "Printer.Ticket", "Printer.Ticket2", "Printer.TicketKitchen", "Printer.TicketBill"));
+
+    /** Attribue le numero de commande 1-100 s'il manque (compteur partage en base). */
+    private void ensureOrderNumber(TicketInfo ticket) {
+        try {
+            OrderNumbers.ensure(ticket, m_App.getSession());
+        } catch (BasicException e) {
+            java.util.logging.Logger.getLogger(JPanelTicket.class.getName())
+                    .log(java.util.logging.Level.WARNING, "Numero de commande non attribue", e);
+        }
+    }
+
+    /** Nom affiche de la commande, suivi de "COMMANDE N\u00b0 42" si elle est numerotee. */
+    private String ticketTitle() {
+        String name = m_oTicket.getName(m_oTicketExt);
+        String number = OrderNumbers.label(m_oTicket);
+        return number == null ? name : name + "   -   " + number;
+    }
+
     private void refreshTicket() {
         
         CardLayout cl = (CardLayout)(getLayout());
@@ -543,7 +564,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
             }  
         
             // The ticket name
-            m_jTicketId.setText(m_oTicket.getName(m_oTicketExt));
+            m_jTicketId.setText(ticketTitle());
 
             // Limpiamos todas las filas y anadimos las del ticket actual
             m_ticketlines.clearTicketLines();
@@ -903,7 +924,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
                             new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.nocustomer")).show(this);           
                         } else {
                             m_oTicket.setCustomer(newcustomer);
-                            m_jTicketId.setText(m_oTicket.getName(m_oTicketExt));
+                            m_jTicketId.setText(ticketTitle());
                         }
                     } catch (BasicException e) {
                         Toolkit.getDefaultToolkit().beep();                   
@@ -1358,6 +1379,8 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
                         ticket.setUser(m_App.getAppUserView().getUser().getUserInfo()); // El usuario que lo cobra
                         ticket.setActiveCash(m_App.getActiveCashIndex());
                         ticket.setDate(new Date()); // Le pongo la fecha de cobro
+                        // OLPOS : numero de commande enregistre avec la vente (distinct du numero de ticket)
+                        ensureOrderNumber(ticket);
 
                         if (executeEvent(ticket, ticketext, "ticket.save") == null) {
                             // Save the receipt and assign a receipt number
@@ -1451,6 +1474,11 @@ if (pickupSize!=null && (Integer.parseInt(pickupSize) >= tmpPickupId.length())){
     
     
     private void printTicket(String sresourcename, TicketInfo ticket, Object ticketext) {
+
+        // OLPOS : numero de commande 1-100 attribue avant le premier ticket / bon cuisine
+        if (ticket != null && NUMBERED_PRINTS.contains(sresourcename)) {
+            ensureOrderNumber(ticket);
+        }
 
         String sresource = dlSystem.getResourceAsXML(sresourcename);
         if (sresource == null) {

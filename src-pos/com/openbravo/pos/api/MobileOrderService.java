@@ -517,6 +517,7 @@ final class MobileOrderService {
         m.put("lockedBy", h == null || h.getSource() != TableLocks.Source.CAISSE ? null : holderJson(h));
         if (snap == null) {
             m.put("exists", false);
+            m.put("orderNumber", null);
             m.put("version", 0L);
             m.put("lines", new ArrayList<Object>());
             m.put("subtotal", 0.0);
@@ -533,6 +534,11 @@ final class MobileOrderService {
             // affichage seulement : les totaux par ligne restent corrects
         }
         m.put("exists", true);
+        // numero visible 1-100 (reutilise) : jamais utilise pour retrouver la commande,
+        // identifiee par la table et la version
+        m.put("orderNumber", com.openbravo.pos.sales.OrderNumbers.numberOf(t));
+        m.put("orderId", t.getId());
+        m.put("orderDate", t.getDate() == null ? null : t.getDate().getTime());
         m.put("version", snap.getVersion());
         m.put("updatedBy", snap.getUpdatedBy());
         m.put("updatedSource", snap.getUpdatedSource());

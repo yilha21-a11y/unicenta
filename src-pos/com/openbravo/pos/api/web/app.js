@@ -193,7 +193,8 @@ function refreshFloors() {
         var draft = load('draft:' + t.id);
         var count = draft && draft.items.length ? ' <span class="tag">' + draft.items.length + ' a envoyer</span>' : '';
         return '<button class="table' + (t.occupied ? ' busy' : '') + '" data-id="' + esc(t.id) + '" data-name="'
-          + esc(t.name) + '">' + esc(t.name) + pending + count + '<small>' + (t.occupied ? esc(t.waiter || 'occupee') : 'libre')
+          + esc(t.name) + '">' + esc(t.name) + pending + count + (t.orderNumber ? '<b class="tnum">N\u00b0 ' + esc(t.orderNumber) + '</b>' : '')
+          + '<small>' + (t.occupied ? esc(t.waiter || 'occupee') : 'libre')
           + '</small></button>';
       }).join('') + '</div>';
     }).join('');
@@ -252,6 +253,10 @@ function renderTable() {
       + '</b> : consultation seulement. Vos ajouts restent dans le brouillon.</div>';
   }
   // commande enregistree
+  if (o && o.orderNumber) {
+    // numero commun au ticket client et au bon cuisine (1 a 100, puis 1)
+    html += '<div class="ordernum">COMMANDE N\u00b0 ' + esc(o.orderNumber) + '</div>';
+  }
   html += '<div class="card"><h2>Commande en cours' + (o && o.exists ? ' <span class="muted">(v' + o.version + ')</span>' : '') + '</h2>';
   if (!o) {
     html += '<p class="muted">Chargement...</p>';

@@ -176,7 +176,7 @@ public class UnicodeTranslatorInt extends UnicodeTranslator {
 //                case '': return -0x0B; //
 //                case '': return -0x0A; //
 //                case '': return -0x09; //
-//                case '': return -0x08; //
+                case '\u00b0': return -0x08; // signe degre (OLPOS : COMMANDE N\u00b0)
                 case '\u00a8': return -0x07; //
 //                case '': return -0x06; //
 //                case '': return -0x05; //

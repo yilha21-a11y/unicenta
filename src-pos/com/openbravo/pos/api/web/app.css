@@ -80,3 +80,7 @@ h2 { font-size: 16px; margin: 4px 0 10px; }
 .tag.warn { background: var(--busy-bg); color: var(--busy); font-weight: 600; }
 .k-a_verifier, .k-non_imprime { color: var(--danger); }
 .k-confirme, .k-confirme_manuellement { color: var(--free); }
+.ordernum { background: var(--navy); color: #fff; border-left: 8px solid var(--teal); border-radius: 12px;
+  padding: 12px 16px; margin-bottom: 12px; font-size: 26px; font-weight: 800; letter-spacing: .5px; text-align: center; }
+.tnum { display: block; font-size: 18px; color: var(--navy); margin-top: 2px; }
+@media (prefers-color-scheme: dark) { .tnum { color: var(--teal); } }

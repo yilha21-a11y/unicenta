@@ -217,6 +217,11 @@ public class JRootApp extends JPanel implements AppView {
         if (!"false".equals(m_props.getProperty("olpos.branding.migrate"))) {
             BrandingMigration.run(m_dlSystem);
         }
+        // Numero de commande 1-100 : bloc ajoute aux modeles d'impression d'une base
+        // existante (insertion seulement, voir OrderNumberTemplates)
+        if (!"false".equals(m_props.getProperty("olpos.ordernumber.templates"))) {
+            com.openbravo.pos.sales.OrderNumberTemplates.run(m_dlSystem);
+        }
 
         // Cargamos las propiedades de base de datos
         m_propsdb = m_dlSystem.getResourceAsProperties(m_props.getHost() + "/properties");

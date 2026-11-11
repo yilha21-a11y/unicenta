@@ -115,6 +115,12 @@ public class JTicketsBagRestaurant extends javax.swing.JPanel {
 
  private void printTicket(String sresourcename, TicketInfo ticket, String table) {
             if (ticket != null) {
+            // OLPOS : numero de commande 1-100 attribue avant le premier bon cuisine
+            try {
+                com.openbravo.pos.sales.OrderNumbers.ensure(ticket, m_App.getSession());
+            } catch (com.openbravo.basic.BasicException e) {
+                Logger.getLogger(JTicketsBagRestaurant.class.getName()).log(Level.WARNING, "Numero de commande non attribue", e);
+            }
             try {
                 ScriptEngine script = ScriptFactory.getScriptEngine(ScriptFactory.VELOCITY);
                 script.put("ticket", ticket);              

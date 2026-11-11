@@ -58,6 +58,8 @@ final class MobileKitchenService {
 
     static final String VERIFY = "Verify";                 // sendstatus d'une ligne a impression incertaine
     static final String P_LINE_SEND_ID = "kitchen.sendId";
+    /** Ligne remise "a envoyer" par une demande de reimpression : son bon porte DUPLICATA. */
+    static final String P_LINE_REPRINT = "kitchen.reprint";
     static final String P_SENDS = "kitchen.sends";
     static final String PERMISSION = "sales.PrintKitchen";
     static final int SENDS_KEPT = 20;
@@ -266,6 +268,11 @@ final class MobileKitchenService {
                 if (sendId.equals(l.getProperty(P_LINE_SEND_ID))
                         && (VERIFY.equals(l.getProperty("sendstatus")) || (manual && "OK".equals(l.getProperty("sendstatus"))))) {
                     l.setProperty("sendstatus", lineStatus);
+                    if ("No".equals(lineStatus) && manual) {
+                        l.setProperty(P_LINE_REPRINT, "1");          // prochain bon : DUPLICATA
+                    } else if ("OK".equals(lineStatus)) {
+                        l.getProperties().remove(P_LINE_REPRINT);
+                    }
                 }
             }
             List<Map<String, Object>> sends = sends(t);

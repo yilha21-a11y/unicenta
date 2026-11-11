@@ -5,6 +5,7 @@ package com.openbravo.pos.sales.restaurant;
 import com.openbravo.basic.BasicException;
 import com.openbravo.data.loader.Session;
 import com.openbravo.pos.sales.DataLogicReceipts;
+import com.openbravo.pos.sales.OrderNumbers;
 import com.openbravo.pos.ticket.TicketInfo;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -122,12 +123,16 @@ public final class TableTicketStore {
             throws BasicException, OrderConflictException {
         begin();
         boolean ok = false;
+        boolean numbered = false;
         try {
             if (lockRow(tableId)) {
                 Snapshot cur = load(tableId);
                 throw new OrderConflictException("Une commande existe deja sur cette table"
                         + suffix(cur) + ".", 0, cur);
             }
+            // numero de commande 1-100 a la premiere sauvegarde avec des articles,
+            // dans la meme transaction (annule avec elle en cas d'echec : pas de trou)
+            numbered = OrderNumbers.assignInTransaction(ticket, session);
             stamp(ticket, 1, who, source);
             try {
                 receipts.insertSharedTicket(tableId, ticket, ticket.getPickupId());
@@ -147,6 +152,9 @@ public final class TableTicketStore {
         } finally {
             if (!ok) {
                 rollbackQuietly();
+                if (numbered) {
+                    OrderNumbers.unstamp(ticket);
+                }
             }
         }
     }
@@ -161,6 +169,7 @@ public final class TableTicketStore {
             throws BasicException, OrderConflictException {
         begin();
         boolean ok = false;
+        boolean numbered = false;
         try {
             if (!lockRow(tableId)) {
                 throw new OrderConflictException("La commande n'existe plus (encaissee, deplacee ou annulee ailleurs).",
@@ -172,6 +181,7 @@ public final class TableTicketStore {
                         expectedVersion, cur);
             }
             long next = expectedVersion + 1;
+            numbered = OrderNumbers.assignInTransaction(ticket, session);
             stamp(ticket, next, who, source);
             receipts.updateSharedTicket(tableId, ticket, ticket.getPickupId());
             commit();
@@ -180,6 +190,9 @@ public final class TableTicketStore {
         } finally {
             if (!ok) {
                 rollbackQuietly();
+                if (numbered) {
+                    OrderNumbers.unstamp(ticket);
+                }
             }
         }
     }
