@@ -246,6 +246,34 @@ Une imprimante réseau ne confirme pas la sortie du papier : statut `envoye`.
 En mode test, les bons s'affichent à l'écran : à la caisse (Administrator),
 menu **Printers**.
 
+### 3.1 quater Numéro de commande 1 à 100
+
+Chaque commande reçoit un numéro visible commun au ticket client, à l'addition
+et au bon cuisine (« COMMANDE N° 42 ») : `order.orderNumber` dans
+`GET …/order` et `orderNumber` sur chaque table de `GET /floors`.
+
+- Séquence 1, 2 … 100 puis 1 ; jamais remise à zéro chaque jour ni au
+  redémarrage. Compteur unique en base (ligne `olpos.order.counter` de la table
+  `RESOURCES`), partagé par la caisse, l'API et tous les postes, incrémenté
+  de façon atomique (ligne verrouillée dans la transaction).
+- Attribué à la première sauvegarde contenant un article (dans la même
+  transaction : pas de numéro perdu en cas de conflit), puis conservé
+  (modifications, ajouts, cuisine, addition, paiement, réimpression).
+- Une requête répétée (même `requestId`) ne crée ni commande ni numéro.
+- Le numéro visible n'identifie pas la commande (il est réutilisé) : la
+  commande reste identifiée par la table, `orderId` et `version`.
+- Distinct du numéro de ticket comptable (`TICKETID`), inchangé.
+- Tickets : date, heure et table (ou « A EMPORTER ») ; « AJOUT » sur un bon
+  cuisine complémentaire, « DUPLICATA » sur une réimpression.
+- Bases existantes : bloc ajouté aux modèles `Printer.Ticket`,
+  `Printer.TicketKitchen`, `Printer.TicketPreview`, `Printer.ReprintTicket`,
+  `Printer.TicketBill` (insertion seulement ; désactivable avec
+  `olpos.ordernumber.templates=false`). Les commandes en cours sans numéro en
+  reçoivent un à leur prochaine sauvegarde.
+
+Guide utilisateur : [OLPOS_Guide_Connexion_Telephone.pdf](OLPOS_Guide_Connexion_Telephone.pdf)
+(source : `docs/guide/guide.html`, régénération : `python docs/guide/build_guide.py`).
+
 ### 3.2 Comment la caisse et les téléphones restent synchronisés
 
 1. **Verrou de table** : tant qu'une table est ouverte à l'écran de la caisse,
@@ -270,7 +298,7 @@ Prérequis : un JDK 8 ou plus récent (testé avec Temurin 17) dans le `PATH`.
 
 ```bat
 build.bat                 :: compile et crée unicentaopos.jar
-test.bat                  :: lance les 85 tests automatiques
+test.bat                  :: lance les 99 tests automatiques
 test-env-setup.bat        :: crée la base et la configuration de TEST dans test-env\
 start-test.bat            :: lance la caisse sur l'environnement de TEST
 ```
