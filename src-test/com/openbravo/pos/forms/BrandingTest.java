@@ -98,6 +98,19 @@ public class BrandingTest {
             assertEquals("<output><ticket><line><text>Chez Marie</text></line></ticket></output>",
                     fresh.getResourceAsText("Printer.TicketNew"));
             assertTrue("2e demarrage : rien a faire", BrandingMigration.run(fresh).isEmpty());
+
+            // logo des tickets : celui d'exemple d'uniCenta est remplace, celui d'un restaurant jamais
+            byte[] sample = java.nio.file.Files.readAllBytes(
+                    java.nio.file.Paths.get("src-test/com/openbravo/pos/forms/unicenta-sample-logo.png"));
+            fresh.setResource("Printer.Ticket.Logo", 1, sample);
+            assertTrue(BrandingMigration.run(fresh).contains("Printer.Ticket.Logo"));
+            DataLogicSystem again = new DataLogicSystem();
+            again.init(s);
+            assertTrue("logo OLPOS installe", !java.util.Arrays.equals(sample, again.getResourceAsBinary("Printer.Ticket.Logo")));
+            byte[] restaurantLogo = new byte[] {1, 2, 3, 4, 5};
+            again.setResource("Printer.Ticket.Logo", 1, restaurantLogo);
+            assertTrue(BrandingMigration.run(again).isEmpty());
+            assertTrue("logo du restaurant intact", java.util.Arrays.equals(restaurantLogo, again.getResourceAsBinary("Printer.Ticket.Logo")));
             // la base reste reconnue (identifiant technique inchange)
             assertEquals(AppLocal.APP_VERSION, fresh.findVersion());
         } finally {

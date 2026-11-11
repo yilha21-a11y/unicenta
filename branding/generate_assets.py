@@ -146,6 +146,12 @@ def main():
         save(resize(symbol, (s, s)), os.path.join(IMAGES, "olpos_icon_%d.png" % s))
     save(resize(symbol, (32, 32)), os.path.join(IMAGES, "favicon.png"))        # icone des autres fenetres
     save(resize(symbol, (38, 38)), os.path.join(TEMPLATES, "window.logo.png"))
+    # logo d'exemple des recus (bases neuves) : 168 x 48 comme l'original ; chaque
+    # restaurant le remplace par son propre logo (Administration > Ressources)
+    receipt = Image.new("RGBA", (168, 48), (0, 0, 0, 0))
+    rl = fit(logo, 160, 46)
+    receipt.alpha_composite(rl, ((168 - rl.width) // 2, (48 - rl.height) // 2))
+    save(receipt, os.path.join(TEMPLATES, "printer.ticket.logo.png"))
 
     # ---- Windows : icone .ico multi-tailles, PNG, ecran de demarrage
     ico_sizes = [(16, 16), (20, 20), (24, 24), (32, 32), (40, 40), (48, 48), (64, 64), (128, 128), (256, 256)]

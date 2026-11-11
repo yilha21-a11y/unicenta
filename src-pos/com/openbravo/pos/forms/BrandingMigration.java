@@ -38,6 +38,8 @@ public final class BrandingMigration {
         {">uniCenta oPOS</text>", ">OLPOS</text>"},
         // ligne de copyright du logiciel : attribution conservee en version courte
         {">Copyright (c) 2009-2014 uniCenta</text>", ">d'apres uniCenta oPOS - GPL v3</text>"},
+        // slogan du logiciel d'origine sur les tickets
+        {">Touch Friendly Point Of Sale</text>", ">Point de vente tactile</text>"},
     };
 
     private BrandingMigration() {
@@ -77,9 +79,65 @@ public final class BrandingMigration {
                 LOG.log(Level.WARNING, "Migration de marque impossible pour " + name, e);
             }
         }
+        if (replaceDefaultReceiptLogo(dlSystem)) {
+            changed.add(RECEIPT_LOGO);
+        }
         if (!changed.isEmpty()) {
             LOG.log(Level.INFO, "Marque OLPOS appliquee aux ressources : {0}", changed);
         }
         return changed;
+    }
+
+    /** Logo imprime en haut des tickets (normalement celui du restaurant). */
+    static final String RECEIPT_LOGO = "Printer.Ticket.Logo";
+    /** Empreinte SHA-256 du logo d'EXEMPLE livre par uniCenta (printer.ticket.logo.png d'origine). */
+    static final String UNICENTA_SAMPLE_LOGO_SHA256 = "54e07b13d11d4f6c8c3e8e17a994f152320c9dbea53309ddda020357e686e797";
+
+    /**
+     * Remplace le logo d'exemple d'uniCenta par celui d'OLPOS, UNIQUEMENT s'il
+     * est identique a l'original : un logo de restaurant n'est jamais touche.
+     */
+    static boolean replaceDefaultReceiptLogo(DataLogicSystem dlSystem) {
+        try {
+            byte[] current = dlSystem.getResourceAsBinary(RECEIPT_LOGO);
+            if (current == null || !UNICENTA_SAMPLE_LOGO_SHA256.equals(sha256(current))) {
+                return false;
+            }
+            byte[] olpos;
+            try (java.io.InputStream in = BrandingMigration.class.getResourceAsStream(
+                    "/com/openbravo/pos/templates/printer.ticket.logo.png")) {
+                if (in == null) {
+                    return false;
+                }
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[4096];
+                int n;
+                while ((n = in.read(buf)) > 0) {
+                    out.write(buf, 0, n);
+                }
+                olpos = out.toByteArray();
+            }
+            if (UNICENTA_SAMPLE_LOGO_SHA256.equals(sha256(olpos))) {
+                return false;   // jar non regenere : rien a faire
+            }
+            dlSystem.setResource(RECEIPT_LOGO, 1, olpos);
+            return true;
+        } catch (java.io.IOException | RuntimeException e) {
+            LOG.log(Level.WARNING, "Logo d'exemple des tickets non remplace", e);
+            return false;
+        }
+    }
+
+    static String sha256(byte[] data) {
+        try {
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(data);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : d) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }
