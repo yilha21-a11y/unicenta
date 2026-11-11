@@ -30,6 +30,8 @@
 
 
 <permissions>
+    <!-- OLPOS : connexion depuis un telephone (prise de commande) -->
+    <class name="mobile.Access"/>
     <class name="plugins.configure"/>
     <class name="com.unicenta.pos.panels.JPanelCloseMoney"/>
     <class name="com.unicenta.pos.panels.JPanelCloseMoneyReprint"/>

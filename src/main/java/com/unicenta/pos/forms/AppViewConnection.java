@@ -55,7 +55,7 @@ public class AppViewConnection {
             String dbURL=null;
             String sDBUser=null;
             String sDBPassword=null;
-            String sUserPath = System.getProperty("user.home"); 
+            String sUserPath = AppConfig.getDataDir().getAbsolutePath();   // OLPOS
             String filePath = sUserPath + "\\open.db";
 
             if (isJavaWebStart()) {
@@ -124,14 +124,57 @@ public class AppViewConnection {
                 props.getProperty("db.schema") +
                 props.getProperty("db.options");                
             }
-            return new Session(dbURL, sDBUser,sDBPassword);
-                
+            Session opened = new Session(dbURL, sDBUser,sDBPassword);
+            lastConnection = new String[] {dbURL, sDBUser, sDBPassword};   // OLPOS : connexions supplementaires
+            return opened;
+
         } catch (InstantiationException | IllegalAccessException | MalformedURLException | ClassNotFoundException e) {
             throw new BasicException(AppLocal.getIntString("message.databasedrivererror"), e);
         } catch (SQLException eSQL) {
             throw new BasicException(AppLocal.getIntString("message.databaseconnectionerror"), eSQL);
         }
     }
+
+    /**
+     * OLPOS : ouvre une connexion SUPPLEMENTAIRE a la base de la caisse, en
+     * reutilisant le pilote JDBC deja enregistre par {@link #createSession}.
+     *
+     * <p>Pour les services qui tournent dans le meme programme que la caisse
+     * (API mobile, envoi cuisine) : rappeler createSession() chargerait une
+     * deuxieme copie du pilote dans un autre ClassLoader ; avec Derby embarque,
+     * deux moteurs ouvriraient la meme base (risque de corruption). Avec
+     * plusieurs bases (db.multi), la base choisie au demarrage est reprise.</p>
+     */
+    public static Session createAdditionalSession(AppProperties props) throws BasicException {
+        try {
+            String[] chosen = lastConnection;
+            if (chosen != null) {
+                return new Session(chosen[0], chosen[1], chosen[2]);
+            }
+            String sDBUser = props.getProperty("db.user");
+            String sDBPassword = props.getProperty("db.password");
+            if (sDBUser != null && sDBPassword != null && sDBPassword.startsWith("crypt:")) {
+                AltEncrypter cypher = new AltEncrypter("cypherkey" + sDBUser);
+                sDBPassword = cypher.decrypt(sDBPassword.substring(6));
+            }
+            return new Session(url(props, "db"), sDBUser, sDBPassword);
+        } catch (SQLException eSQL) {
+            throw new BasicException(AppLocal.getIntString("message.databaseconnectionerror"), eSQL);
+        }
+    }
+
+    /** Adresse complete d'une base : URL + schema + options (format uniCenta 5.0). */
+    static String url(AppProperties props, String prefix) {
+        return nz(props.getProperty(prefix + ".URL")) + nz(props.getProperty(prefix + ".schema"))
+                + nz(props.getProperty(prefix + ".options"));
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
+    }
+
+    /** Base ouverte par createSession() : {url, utilisateur, mot de passe}. */
+    private static volatile String[] lastConnection;
 
     private static boolean isJavaWebStart() {
 

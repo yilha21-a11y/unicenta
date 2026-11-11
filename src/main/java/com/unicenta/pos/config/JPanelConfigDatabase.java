@@ -922,10 +922,10 @@ public class JPanelConfigDatabase extends javax.swing.JPanel implements PanelCon
         dirname = dirname == null ? "./" : dirname;
 
         if ("Apache Derby".equals(jcboDBDriver.getSelectedItem())) {
-            dbDriverLibraryValue.setText(new File(new File(dirname), "derby-10.14.2.0.jar").getAbsolutePath());
+            dbDriverLibraryValue.setText(new File(new File(dirname), "lib/derby-10.14.2.0.jar").getAbsolutePath());
             dbDriverClassValue.setText("org.apache.derby.jdbc.EmbeddedDriver");
-            dbURLValue.setText("jdbc:derby:" + System.getProperty("user.home")+"/.unicenta/");
-            jtxtDbSchema.setText("unicentaopos-database;create=true");
+            dbURLValue.setText("jdbc:derby:" + com.unicenta.pos.forms.AppConfig.getDataDir().getAbsolutePath().replace(java.io.File.separatorChar, '/') + "/");   // OLPOS : dossier de donnees, jamais ~/.unicenta
+            jtxtDbSchema.setText("database;create=true");
             dbUserValue.setText("");
             dbPasswordValue.setText("");
             //jtxtDbSchema.setText("unicentaopos-derby");
@@ -939,7 +939,7 @@ public class JPanelConfigDatabase extends javax.swing.JPanel implements PanelCon
         else if ("SQLite".equals(jcboDBDriver.getSelectedItem())) {
             dbDriverLibraryValue.setText(new File(new File(dirname), "sqlite-jdbc-3.7.2.jar").getAbsolutePath());
             dbDriverClassValue.setText("org.sqlite.JDBC");
-            dbURLValue.setText("jdbc:sqlite:" + System.getProperty("user.home")+"/.unicenta/");
+            dbURLValue.setText("jdbc:sqlite:" + com.unicenta.pos.forms.AppConfig.getDataDir().getAbsolutePath().replace(java.io.File.separatorChar, '/') + "/");
             dbUserValue.setText("");
             dbPasswordValue.setText("");
             jtxtDbSchema.setText("unicentaopos");

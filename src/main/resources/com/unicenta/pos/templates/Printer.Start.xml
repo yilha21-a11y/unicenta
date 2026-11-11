@@ -28,7 +28,7 @@
 <!-- <display animation="curtain"> -->
 
    <display animation="none">
-        <line><text align="center" length="20">uniCenta oPOS</text></line>
-        <line><text align="center" length="20">Touch Friendly POS</text></line>
+        <line><text align="center" length="20">OLPOS</text></line>
+        <line><text align="center" length="20">Caisse tactile</text></line>
     </display>
 </output>

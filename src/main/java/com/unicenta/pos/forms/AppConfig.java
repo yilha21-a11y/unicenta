@@ -70,9 +70,65 @@ public class AppConfig implements AppProperties {
     //log.debug("Reading configuration file: {}", configfile.getAbsolutePath());
   }
 
-  private File getDefaultConfig() {
-    return new File(new File(System.getProperty("user.home"))
-            , AppLocal.APP_ID + ".properties");
+  // ==================================================================== OLPOS
+  // OLPOS n'utilise JAMAIS ~/unicentaopos.properties ni ~/.unicenta (fichiers
+  // d'uniCenta d'origine, eventuellement en production sur le meme PC) :
+  // configuration, base Derby et journaux vont dans un dossier de donnees
+  // separe du programme : -Dolpos.datadir=..., sinon %LOCALAPPDATA%\OLPOS5.
+
+  /** Nom du dossier de donnees sous %LOCALAPPDATA%. */
+  public static final String DATA_DIR_NAME = "OLPOS5";
+  /** Nom du fichier de configuration dans le dossier de donnees. */
+  public static final String CONFIG_FILE_NAME = "olpos.properties";
+
+  private static volatile File activeConfigFile = null;
+
+  /** Chemin du dossier de donnees (sans le creer). */
+  public static File dataDirPath() {
+    String dir = System.getProperty("olpos.datadir");
+    if (dir != null && !dir.trim().isEmpty()) {
+      return new File(dir.trim()).getAbsoluteFile();
+    }
+    String local = System.getenv("LOCALAPPDATA");
+    File base = (local == null || local.trim().isEmpty())
+            ? new File(new File(System.getProperty("user.home"), "AppData"), "Local")
+            : new File(local);
+    return new File(base, DATA_DIR_NAME);
+  }
+
+  /** Dossier de donnees (cree si besoin). */
+  public static File getDataDir() {
+    File f = dataDirPath();
+    if (!f.isDirectory() && !f.mkdirs()) {
+      log.warn("Impossible de creer le dossier de donnees {}", f);
+    }
+    return f;
+  }
+
+  /** Base Derby par defaut : dossier de donnees\database. */
+  public static File getDefaultDerbyDatabase() {
+    return new File(getDataDir(), "database");
+  }
+
+  /** Declare le fichier de configuration de l'instance en cours (au demarrage). */
+  public static void setActiveConfigFile(File file) {
+    activeConfigFile = file;
+    m_instance = null;
+  }
+
+  /** Fichier de configuration de l'instance en cours. */
+  public static File getActiveConfigFile() {
+    File f = activeConfigFile;
+    return f == null ? getDefaultConfig() : f;
+  }
+
+  /** Relit la configuration de l'instance en cours. */
+  public static AppConfig loadActive() {
+    return new AppConfig(getActiveConfigFile());
+  }
+
+  private static File getDefaultConfig() {
+    return new File(getDataDir(), CONFIG_FILE_NAME);
   }
 
   /**
@@ -181,8 +237,7 @@ public class AppConfig implements AppProperties {
   public static AppConfig getInstance() {
 
     if (m_instance == null) {
-      m_instance = new AppConfig(new File(System.getProperty("user.home")
-              , AppLocal.APP_ID + ".properties"));
+      m_instance = new AppConfig(getActiveConfigFile());   // OLPOS : config de CETTE instance
     }
     return m_instance;
   }
@@ -226,6 +281,24 @@ public class AppConfig implements AppProperties {
       loadDefault();
     }
 
+    // OLPOS : apres une mise a jour, un ancien chemin du pilote Derby peut ne
+    // plus exister ; on reprend celui du programme installe.
+    String lib = properties.getProperty("db.driverlib");
+    String dirname = System.getProperty("dirname.path");
+    if (dirname != null && lib != null && new File(lib).getName().toLowerCase().startsWith("derby")
+            && !new File(lib).isFile()) {
+      properties.setProperty("db.driverlib", derbyJar(dirname).getAbsolutePath());
+    }
+  }
+
+  /** Pilote Derby fourni avec le programme (lib\derby-*.jar). */
+  static File derbyJar(String dirname) {
+    File libdir = new File(new File(dirname), "lib");
+    File[] found = libdir.listFiles((d, n) -> n.startsWith("derby-") && n.endsWith(".jar") && Character.isDigit(n.charAt(6)));
+    if (found != null && found.length > 0) {
+      return found[0];
+    }
+    return new File(libdir, "derby-10.14.2.0.jar");
   }
 
   private void refreshProperties() {
@@ -290,7 +363,19 @@ public class AppConfig implements AppProperties {
     setPaymentProperties(properties);
     setDeviceProperties(properties);
     setTableProperties(properties);
+    setOlposProperties(properties);
 
+  }
+
+  /**
+   * OLPOS : mode restaurant et prise de commande sur telephone actives
+   * d'office (desactivable : api.enabled=false, case de l'installateur).
+   */
+  private void setOlposProperties(Properties properties) {
+    properties.setProperty("machine.ticketsbag", "restaurant");
+    properties.setProperty("api.enabled", "true");
+    properties.setProperty("api.port", "8095");
+    properties.setProperty("api.bind", "0.0.0.0");
   }
 
 
@@ -348,14 +433,15 @@ public class AppConfig implements AppProperties {
     properties.setProperty("paper.standard.height", "698");
     properties.setProperty("paper.standard.mediasizename", "A4");
 
-    properties.setProperty("tkt.header1", "uniCenta oPOS");
-    properties.setProperty("tkt.header2", "Touch Friendly Point Of Sale");
-    properties.setProperty("tkt.header3", "Copyright (c) 2009-2018 uniCenta");
-    properties.setProperty("tkt.header4", "Change header text in Configuration");
+    // OLPOS : en-tete et pied de ticket = ceux du restaurant (Configuration)
+    properties.setProperty("tkt.header1", "Nom du restaurant");
+    properties.setProperty("tkt.header2", "Adresse");
+    properties.setProperty("tkt.header3", "");
+    properties.setProperty("tkt.header4", "Modifiez ce texte dans Configuration");
 
-    properties.setProperty("tkt.footer1", "Change footer text in Configuration");
-    properties.setProperty("tkt.footer2", "Thank you for your custom");
-    properties.setProperty("tkt.footer3", "Please Call Again");
+    properties.setProperty("tkt.footer1", "Merci de votre visite");
+    properties.setProperty("tkt.footer2", "");
+    properties.setProperty("tkt.footer3", "");
 
     properties.setProperty("machine.printer", "screen");
     properties.setProperty("machine.printer.2", "Not defined");
@@ -375,13 +461,14 @@ public class AppConfig implements AppProperties {
     properties.setProperty("override.pin", "");
 
     // Default database
-    properties.setProperty("db.driverlib", new File(new File(dirname), "derby-10.14.2.0.jar").getAbsolutePath());
+    // OLPOS : base Derby dans le dossier de donnees OLPOS (jamais ~/.unicenta)
+    properties.setProperty("db.driverlib", derbyJar(dirname).getAbsolutePath());
     properties.setProperty("db.engine", "Derby");
     properties.setProperty("db.driver", "org.apache.derby.jdbc.EmbeddedDriver");
 
-    properties.setProperty("db.name", "Main DB");
-    properties.setProperty("db.URL", "jdbc:derby:" + System.getProperty("user.home")+"/.unicenta/");
-    properties.setProperty("db.schema", "unicentaopos-database;create=true");
+    properties.setProperty("db.name", "OLPOS");
+    properties.setProperty("db.URL", "jdbc:derby:" + getDataDir().getAbsolutePath().replace(File.separatorChar, '/') + "/");
+    properties.setProperty("db.schema", "database;create=true");
     properties.setProperty("db.options", "");
     properties.setProperty("db.user", "");
     properties.setProperty("db.password", "");

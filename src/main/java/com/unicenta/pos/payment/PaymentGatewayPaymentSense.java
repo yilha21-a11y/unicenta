@@ -17,70 +17,19 @@
 //    You should have received a copy of the GNU General Public License
 //    along with uniCenta oPOS.  If not, see <http://www.gnu.org/licenses/>.
 
+//    OLPOS : terminal PaymentSense retire (il passait par le module binaire
+//    unicenta-plugins, sans source ni licence, non inclus dans OLPOS).
+
 package com.unicenta.pos.payment;
 
-import com.unicenta.plugins.Application;
-import com.unicenta.plugins.common.AppContext;
-import com.unicenta.pos.util.RoundUtils;
-import lombok.extern.slf4j.Slf4j;
-
-import javax.swing.*;
-import java.awt.*;
-
-@Slf4j
 public class PaymentGatewayPaymentSense implements PaymentGateway {
 
-    /** Creates a new instance of PaymentGatewayExt */
     public PaymentGatewayPaymentSense() {
     }
 
-    Window getPaymentWindow() {
-        for (Window window : Window.getWindows()) {
-            if (window.isActive()) {
-                return window;
-            }
-        }
-        return null;
-    }
-
-    /**
-     *
-     * @param payinfo
-     */
     @Override
     public void execute(PaymentInfoMagcard payinfo) {
-
-        int timer = 0;
-        int timeout = 180;
-
-        new Application().paymentSenseTransaction(RoundUtils.round(payinfo.getTotal()), getPaymentWindow());
-
-        while (AppContext.getIsProcessing() == null || AppContext.getIsProcessing()) {
-            try {
-                log.info("uniCenta-oPos: waiting for payment to complete ....");
-                Thread.sleep(1000);
-                timer += 1;
-                if (timer > timeout) break;
-            } catch (InterruptedException e) {
-                log.error(e.getMessage());
-            }
-        }
-
-        if (AppContext.getPaymentResult() == null) {
-            payinfo.paymentError("Transaction Error! Please try again", "No Response");
-        }
-        if (AppContext.getPaymentResult().getTransactionResult().equals("SUCCESSFUL")){
-            payinfo.setCardName(AppContext.getPaymentResult().getCardSchemeName());
-            payinfo.setVerification(AppContext.getPaymentResult().getPaymentMethod());
-            payinfo.setChipAndPin(true);
-            payinfo.paymentOK(
-                    AppContext.getPaymentResult().getAuthCode(),
-                    AppContext.getPaymentResult().getTransactionId(),
-                    AppContext.getPaymentResult().getTransactionResult()
-            );
-        }
-        else {
-            payinfo.paymentError("Transaction Error! Please try again", AppContext.getPaymentResult().getTransactionResult());
-        }
+        payinfo.paymentError("PaymentSense n'est pas disponible dans OLPOS : utilisez un autre moyen de paiement.",
+                "Non disponible");
     }
 }

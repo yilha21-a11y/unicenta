@@ -30,8 +30,6 @@ import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatAtomOneLightIJ
 import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatGitHubIJTheme;
 import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMaterialLighterIJTheme;
 import com.unicenta.format.Formats;
-import com.unicenta.plugins.Application;
-import com.unicenta.plugins.metrics.Metrics;
 import com.unicenta.pos.instance.InstanceQuery;
 import com.unicenta.pos.ticket.TicketInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +61,34 @@ public class StartPOS {
     }
   }
 
+  /**
+   * OLPOS : applique le reglage {@code user.timezone} du fichier de
+   * configuration (ex. America/Los_Angeles). Vide ou absent : Java suit Windows.
+   * Un identifiant inconnu est ignore.
+   */
+  public static java.util.TimeZone applyTimeZone(AppProperties config) {
+    String id = config.getProperty("user.timezone");
+    if (id == null || id.trim().isEmpty()) {
+      return null;
+    }
+    id = id.trim();
+    if (!java.time.ZoneId.getAvailableZoneIds().contains(id)) {
+      log.warn("Fuseau horaire inconnu dans user.timezone : {} (ignore)", id);
+      return null;
+    }
+    java.util.TimeZone tz = java.util.TimeZone.getTimeZone(id);
+    java.util.TimeZone.setDefault(tz);
+    return tz;
+  }
+
   public static void main(final String args[]) {
+
+    // OLPOS : journal Derby dans le dossier de donnees (le dossier du programme
+    // n'est pas accessible en ecriture), jamais dans le dossier courant.
+    if (System.getProperty("derby.stream.error.file") == null) {
+      System.setProperty("derby.stream.error.file",
+              new java.io.File(AppConfig.getDataDir(), "derby.log").getAbsolutePath());
+    }
 
     SwingUtilities.invokeLater(() -> {
       if (!registerApp()) {
@@ -71,8 +96,10 @@ public class StartPOS {
       }
 
       AppConfig config = new AppConfig(args);
+      AppConfig.setActiveConfigFile(config.getConfigFile());   // OLPOS
 
       config.load();
+      applyTimeZone(config);   // OLPOS
 
       String slang = config.getProperty("user.language");
       String scountry = config.getProperty("user.country");
@@ -106,7 +133,8 @@ public class StartPOS {
 
       String hostname = config.getProperty("machine.hostname");
       TicketInfo.setHostname(hostname);
-      applicationStarted(hostname);
+      // OLPOS : pas d'envoi du nom du PC et de la version a api.unicenta.io
+      // (uniCenta 5.0 le faisait a chaque demarrage, sans le dire)
 
       String screenmode = config.getProperty("machine.screenmode");
 
@@ -126,13 +154,5 @@ public class StartPOS {
         }
       }
     });
-  }
-  private static void applicationStarted(String host) {
-    new Thread(() -> {
-      Metrics metrics = new Metrics();
-      metrics.setDevice(host);
-      metrics.setUniCentaVersion(AppLocal.APP_VERSION);
-      new Application().postMetrics(metrics);
-    }).start();
   }
 }

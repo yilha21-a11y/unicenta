@@ -195,6 +195,11 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
     initComponents();
     jScrollPane1.getVerticalScrollBar().setPreferredSize(new Dimension(30, 30));
     serverMonitor.setVisible(false);
+    // Identite OLPOS (code genere par NetBeans inchange)
+    jLabel1.setIcon(Branding.icon(Branding.LOGO));
+    jLabel1.setText(Branding.aboutHtml());
+    poweredby.setIcon(Branding.icon(Branding.LOGO_SMALL));
+    poweredby.setToolTipText(Branding.NAME + " " + Branding.VERSION + " - version d\u00e9riv\u00e9e d'" + Branding.DERIVED_FROM);
     webMemoryBar1.setShowMaximumMemory(true);
   }
 
@@ -416,7 +421,7 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
       log.error(ex.getMessage());
     }
 // create the filename
-    String sUserPath = System.getProperty("user.home");
+    String sUserPath = AppConfig.getDataDir().getAbsolutePath();   // OLPOS : fichiers de suivi dans le dossier de donnees
     String filePath = sUserPath + "/" + sMachine + ".lau";
 
     Instant machineTimestamp = Instant.now();
@@ -518,7 +523,7 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
     String newLogo = m_props.getProperty("start.logo");
     if (newLogo != null) {
       if ("".equals(newLogo)) {
-        jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/unicenta/images/logo.png")));
+        jLabel1.setIcon(Branding.icon(Branding.LOGO));   // OLPOS
       } else {
         jLabel1.setIcon(new javax.swing.ImageIcon(newLogo));
       }
@@ -527,16 +532,7 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
     String newText = m_props.getProperty("start.text");
     if (newText != null) {
       if (newText.equals("")) {
-        jLabel1.setText("<html><center>uniCenta oPOS - Touch Friendly Point of Sale<br>" +
-                "Copyright \u00A9  uniCenta <br>" +
-                "https://unicenta.com/<br>" +
-                "<br>" +
-                "uniCenta oPOS is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.<br>" +
-                "<br>" +
-                "uniCenta oPOS is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.<br>" +
-                "<br>" +
-                "You should have received a copy of the GNU General Public License along with uniCenta oPOS.  If not, see http://www.gnu.org/licenses/<br>" +
-                "</center>");
+        jLabel1.setText(Branding.aboutHtml());   // OLPOS
 
       } else {
         try {
@@ -578,7 +574,7 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
       shutdownIButtonMonitor();
 
 // delete the open.db tracking file
-      String sUserPath = System.getProperty("user.home");
+      String sUserPath = AppConfig.getDataDir().getAbsolutePath();   // OLPOS : fichiers de suivi dans le dossier de donnees
 //                String filePath = sUserPath + "\\open.db";
       String filePath = sUserPath + "/open.db";
       try {

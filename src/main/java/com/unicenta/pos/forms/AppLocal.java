@@ -28,7 +28,9 @@ import com.unicenta.beans.LocaleResources;
 public class AppLocal {
 
 
-    public static final String APP_NAME = "uniCenta oPOS";
+    // OLPOS : nom visible (version derivee d'uniCenta oPOS). APP_ID et APP_VERSION
+    // restent ceux d'uniCenta : identifiants techniques de la base de donnees.
+    public static final String APP_NAME = "OLPOS";
     public static final String APP_ID = "unicentaopos";
     public static final String APP_VERSION = "5.0";
 

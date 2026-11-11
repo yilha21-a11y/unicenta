@@ -459,6 +459,29 @@ public class TicketLineInfo implements SerializableWrite, SerializableRead, Seri
     public String printPrinter() {
         return StringUtils.encodeXML(attributes.getProperty("product.printer"));
     }      
+    /**
+     * OLPOS : ligne a envoyer en cuisine. Dans uniCenta 5.0, le champ
+     * "Imprimante" du produit (PRINTTO, 0 a 6) designe l'imprimante de
+     * preparation : 0 = pas d'envoi, 1 a 6 = imprimante machine.printer[.N].
+     */
+    public boolean isProductKitchen() {
+        return kitchenPrinter() != null;
+    }
+
+    /** OLPOS : numero d'imprimante cuisine de la ligne ("1" a "6"), ou null. */
+    public String kitchenPrinter() {
+        return kitchenPrinter(attributes.getProperty("product.printer"));
+    }
+
+    /** OLPOS : "1" a "6" si la valeur designe une imprimante cuisine, sinon null. */
+    public static String kitchenPrinter(String printTo) {
+        if (printTo == null) {
+            return null;
+        }
+        String p = printTo.trim();
+        return p.length() == 1 && p.charAt(0) >= '1' && p.charAt(0) <= '6' ? p : null;
+    }
+
     public boolean isProductCom() {
        return "true".equals(attributes.getProperty("product.com"));
     }

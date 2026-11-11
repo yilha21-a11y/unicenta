@@ -2841,8 +2841,7 @@ public final class Transfer extends JPanel implements JPanelView {
               , "/lib/derby-10.10.2.0.jar").getAbsolutePath());
       jtxtDbDriver.setText("org.apache.derby.jdbc.EmbeddedDriver");
       jtxtDbType.setText("jdbc:derby:");
-      jtxtDbServerPort.setText("" + new File(new File(System.getProperty("user.home"))
-              , ""));
+      jtxtDbServerPort.setText("");   // OLPOS : pas de base proposee par defaut (jamais ~/.unicenta)
       jtxtDbParams.setText("");
     } else if ("PostgreSQL".equals(cbSource.getSelectedItem())) {
       jtxtDbDriverLib.setText(new File(new File(dirname)

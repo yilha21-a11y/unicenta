@@ -82,6 +82,10 @@ public class JRootKiosk extends javax.swing.JFrame implements AppMessage {
             add(m_rootapp, BorderLayout.CENTER);            
     
             setTitle(AppLocal.APP_NAME + " - " + AppLocal.APP_VERSION);
+            java.util.List<java.awt.Image> olposIcons = Branding.windowIcons();   // OLPOS
+            if (!olposIcons.isEmpty()) {
+                setIconImages(olposIcons);
+            }
             
             Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
             setBounds(0, 0, d.width, d.height);        

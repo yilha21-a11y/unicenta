@@ -28,7 +28,6 @@ import com.unicenta.data.loader.SerializerWriteBasic;
 import com.unicenta.data.loader.Session;
 import com.unicenta.data.loader.StaticSentence;
 import com.unicenta.format.Formats;
-import com.unicenta.plugins.Application;
 import com.unicenta.pos.forms.*;
 import com.unicenta.pos.printer.TicketParser;
 import com.unicenta.pos.printer.TicketPrinterException;
@@ -722,7 +721,7 @@ public class JPanelCloseMoney extends JPanel implements JPanelView, BeanFactoryA
             }
 
             if (m_App.getProperties().getProperty("payment.gateway").equals("PaymentSense")) {
-                new Application().paymentSenseEOD(getActiveWindow());
+                log.warn("PaymentSense non disponible dans OLPOS (module uniCenta non inclus)");   // OLPOS
             }
 
             try {

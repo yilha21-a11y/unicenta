@@ -101,6 +101,7 @@ public class TransferPanel extends javax.swing.JFrame {
             public void run() {
                 
                 AppConfig config = new AppConfig(args);
+                AppConfig.setActiveConfigFile(config.getConfigFile());   // OLPOS
                 config.load();    
 
                 new TransferPanel(config).setVisible(true);                

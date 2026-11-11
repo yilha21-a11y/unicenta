@@ -138,7 +138,7 @@ public class DataLogicReceipts extends BeanFactoryDataSingle {
             id, 
             ticket.getName(), 
             ticket,
-            ticket.getUser().getId(),
+            ticket.getUser() == null ? null : ticket.getUser().getId(),   // OLPOS : commande sans serveur (tests, import)
             pickupid
 
         };
@@ -175,7 +175,7 @@ public class DataLogicReceipts extends BeanFactoryDataSingle {
             id, 
             ticket.getName(), 
             ticket, 
-            ticket.getUser().getId(),
+            ticket.getUser() == null ? null : ticket.getUser().getId(),   // OLPOS : commande sans serveur (tests, import)
             pickupid
         };
         Datas[] datas = new Datas[] {

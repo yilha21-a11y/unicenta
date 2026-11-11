@@ -19,7 +19,6 @@
 
 package com.unicenta.pos.forms;
 
-import com.unicenta.plugins.Application;
 import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
@@ -55,7 +54,9 @@ public class MenuPanelAction extends AbstractAction {
 
         if (m_sMyView.equals("plugins.configure") ) {
             log.debug("Configure plugins");
-            new Application().initScreen("Dashboard", getActiveWindow());
+            javax.swing.JOptionPane.showMessageDialog(getActiveWindow(),
+                    "Le tableau de bord en ligne d'uniCenta (api.unicenta.io) n'est pas inclus dans OLPOS.",
+                    AppLocal.APP_NAME, javax.swing.JOptionPane.INFORMATION_MESSAGE);   // OLPOS
         }
         else {
             m_App.getAppUserView().showTask(m_sMyView);

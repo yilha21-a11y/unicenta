@@ -30,6 +30,8 @@
 
 
 <permissions>
+    <!-- OLPOS : connexion depuis un telephone (prise de commande) -->
+    <class name="mobile.Access"/>
     <class name="com.unicenta.pos.customers.CustomersPayment"/>
     <class name="com.unicenta.pos.panels.JPanelPayments"/>
     <class name="com.unicenta.pos.sales.JPanelTicketEdits"/>

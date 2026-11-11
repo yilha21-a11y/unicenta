@@ -37,8 +37,9 @@ public class InstanceQuery {
      * @throws java.rmi.NotBoundException */
     public InstanceQuery() throws RemoteException, NotBoundException {
         
-        Registry registry = LocateRegistry.getRegistry();           
-        m_appstub = (AppMessage) registry.lookup("AppMessage");
+        // OLPOS : registre local propre a OLPOS 5 (voir InstanceManager)
+        Registry registry = LocateRegistry.getRegistry("127.0.0.1", InstanceManager.PORT);           
+        m_appstub = (AppMessage) registry.lookup(InstanceManager.NAME);
     }
     
     /**

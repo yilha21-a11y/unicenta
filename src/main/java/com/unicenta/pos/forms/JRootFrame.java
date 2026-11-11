@@ -19,8 +19,6 @@
 
 package com.unicenta.pos.forms;
 
-import com.unicenta.plugins.Application;
-import com.unicenta.plugins.metrics.Metrics;
 import com.unicenta.pos.config.JFrmConfig;
 import com.unicenta.pos.instance.AppMessage;
 import com.unicenta.pos.instance.InstanceManager;
@@ -86,6 +84,10 @@ public class JRootFrame extends javax.swing.JFrame implements AppMessage {
 
             try {
                 this.setIconImage(ImageIO.read(JRootFrame.class.getResourceAsStream("/com/unicenta/images/favicon.png")));
+                java.util.List<java.awt.Image> olposIcons = com.unicenta.pos.forms.Branding.windowIcons();   // OLPOS
+                if (!olposIcons.isEmpty()) {
+                    this.setIconImages(olposIcons);
+                }
             } catch (IOException e) {
             }
 

@@ -84,10 +84,14 @@ public class PrintItemLine implements PrintItem {
 
         MyPrinterState ps = new MyPrinterState(textsize);
         float left = x;
+        // OLPOS : ligne de base en BAS de la ligne (et non en haut), sinon le
+        // texte deborde au-dessus et les lignes en grand (double hauteur)
+        // chevauchent la ligne precedente (ecran et imprimantes Windows).
+        float baseline = y + getHeight() - g.getFontMetrics(ps.getFont(font, 0)).getDescent();
         for (int i = 0; i < m_atext.size(); i++) {
             StyledText t = m_atext.get(i);
             g.setFont(ps.getFont(font, t.style));
-            g.drawString(t.text, left, (float) y);
+            g.drawString(t.text, left, baseline);
             left += g.getFontMetrics().getStringBounds(t.text, g).getWidth();
         }
     }

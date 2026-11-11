@@ -34,16 +34,79 @@ import java.util.UUID;
 public final class RolesView extends javax.swing.JPanel implements EditorRecord {
     
     private Object m_oId;
+
+    /** Permission de connexion depuis un telephone (API mobile). */
+    static final String MOBILE_ACCESS = "mobile.Access";
+    // Case a cocher au-dessus du texte XML : evite d'ecrire la ligne a la main.
+    private final javax.swing.JCheckBox m_jMobile = new javax.swing.JCheckBox();
+    private boolean syncing;
     
     /** Creates new form RolesEditor
      * @param dirty */
     public RolesView(DirtyManager dirty) {
         initComponents();
+
+        // La zone de texte est placee sous la case a cocher (code genere inchange).
+        m_jMobile.setText(AppLocal.getIntString("label.mobileaccess"));
+        m_jMobile.setFont(new java.awt.Font("Arial", 0, 12));
+        javax.swing.JPanel withMobile = new javax.swing.JPanel(new java.awt.BorderLayout(0, 6));
+        withMobile.setOpaque(false);
+        ((javax.swing.GroupLayout) getLayout()).replace(jScrollPane1, withMobile);
+        withMobile.add(m_jMobile, java.awt.BorderLayout.NORTH);
+        withMobile.add(jScrollPane1, java.awt.BorderLayout.CENTER);
+        m_jMobile.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (syncing) {
+                    return;
+                }
+                String xml = m_jText.getText();
+                syncing = true;
+                try {
+                    m_jText.setText(m_jMobile.isSelected()
+                            ? RolePermissionsXml.add(xml, MOBILE_ACCESS)
+                            : RolePermissionsXml.remove(xml, MOBILE_ACCESS));
+                    m_jText.setCaretPosition(0);
+                } finally {
+                    syncing = false;
+                }
+            }
+        });
+        // le texte modifie a la main met la case a jour
+        m_jText.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                syncMobile();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                syncMobile();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                syncMobile();
+            }
+        });
         
         m_jName.getDocument().addDocumentListener(dirty);
         m_jText.getDocument().addDocumentListener(dirty);
         
         writeValueEOF();
+    }
+
+    private void syncMobile() {
+        if (syncing) {
+            return;
+        }
+        syncing = true;
+        try {
+            m_jMobile.setSelected(RolePermissionsXml.has(m_jText.getText(), MOBILE_ACCESS));
+            m_jMobile.setEnabled(m_jText.isEnabled());
+        } finally {
+            syncing = false;
+        }
     }
     
     /**
@@ -56,6 +119,7 @@ public final class RolesView extends javax.swing.JPanel implements EditorRecord 
         m_jText.setText(null);
         m_jName.setEnabled(false);
         m_jText.setEnabled(false);
+        syncMobile();
     }
     
     /**
@@ -68,6 +132,7 @@ public final class RolesView extends javax.swing.JPanel implements EditorRecord 
         m_jText.setText(null);
         m_jName.setEnabled(true);
         m_jText.setEnabled(true);
+        syncMobile();
     }
     
     /**
@@ -84,6 +149,7 @@ public final class RolesView extends javax.swing.JPanel implements EditorRecord 
         m_jText.setCaretPosition(0);
         m_jName.setEnabled(false);
         m_jText.setEnabled(false);
+        syncMobile();
     }
 
     /**
@@ -100,6 +166,7 @@ public final class RolesView extends javax.swing.JPanel implements EditorRecord 
         m_jText.setCaretPosition(0);
         m_jName.setEnabled(true);
         m_jText.setEnabled(true);
+        syncMobile();
     }
 
     /**

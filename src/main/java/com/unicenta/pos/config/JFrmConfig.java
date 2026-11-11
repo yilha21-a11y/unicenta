@@ -49,6 +49,10 @@ public class JFrmConfig extends javax.swing.JFrame {
         
         try {
             this.setIconImage(ImageIO.read(JRootFrame.class.getResourceAsStream("/com/unicenta/images/favicon.png")));
+                java.util.List<java.awt.Image> olposIcons = com.unicenta.pos.forms.Branding.windowIcons();   // OLPOS
+                if (!olposIcons.isEmpty()) {
+                    this.setIconImages(olposIcons);
+                }
         } catch (IOException e) {
         }   
         setTitle(AppLocal.APP_NAME + " - " + AppLocal.APP_VERSION + " - " + AppLocal.getIntString("Menu.Configuration"));
@@ -103,6 +107,7 @@ public class JFrmConfig extends javax.swing.JFrame {
             public void run() {
                 
                 AppConfig config = new AppConfig(args);
+                AppConfig.setActiveConfigFile(config.getConfigFile());   // OLPOS
                 config.load();
 
                 // Set the look and feel

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    uniCenta oPOS - Touch friendly Point Of Sale
+    Copyright (c) 2009-2018 uniCenta.
+    http://sourceforge.net/projects/unicentaopos
+
+    This file is part of uniCenta oPOS.
+
+    uniCenta oPOS is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    uniCenta oPOS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with uniCenta oPOS.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<!--
+    OLPOS - bon cuisine, utilise par le bouton Cuisine de la caisse ET par les
+    telephones (meme service d'envoi, voir com.unicenta.pos.kitchen.KitchenService).
+
+    - Seules les lignes choisies pour CET envoi (sendstatus = "No") sont imprimees :
+      les nouvelles lignes, jamais celles deja parties en cuisine.
+    - Chaque produit part sur l'imprimante de son champ "Imprimante" (1 a 6 ;
+      0 = pas d'envoi en cuisine) : un bon par imprimante concernee.
+    - AJOUT : la commande a deja eu un envoi ; DUPLICATA : reimpression demandee.
+    - Rien n'est modifie dans la commande par ce modele : le statut des lignes est
+      enregistre par le service APRES l'impression, selon son resultat.
+-->
+<output>
+    <display>
+        <line>
+            <text align="left" length="10">Cuisine</text>
+            <text align="right" length="10">${ticket.printTotal()}</text>
+        </line>
+        <line>
+            <text align="center" length="20">Envoi en cuisine</text>
+        </line>
+    </display>
+#set ($olposAjout = false)
+#set ($olposDuplicata = false)
+#foreach ($olposLine in $ticket.getLines())
+#if ($olposLine.isProductKitchen() && $olposLine.getProperty("sendstatus"))
+#if ($olposLine.getProperty("sendstatus").equals("No"))
+#if ($olposLine.getProperty("kitchen.reprint"))
+#set ($olposDuplicata = true)
+#end
+#elseif (!$olposLine.getProperty("sendstatus").equals("-"))
+#set ($olposAjout = true)
+#end
+#end
+#end
+#foreach ($olposPrinter in ["1", "2", "3", "4", "5", "6"])
+#set ($olposCount = 0)
+#foreach ($olposLine in $ticket.getLines())
+#if ($olposLine.isProductKitchen() && $olposPrinter.equals($olposLine.kitchenPrinter()) && $olposLine.getProperty("sendstatus") && $olposLine.getProperty("sendstatus").equals("No"))
+#set ($olposCount = $olposCount + 1)
+#end
+#end
+#if ($olposCount > 0)
+    <ticket printer="${olposPrinter}">
+        <!-- OLPOS:order-number : numero commun ; AJOUT = bon complementaire ; DUPLICATA = reimpression -->
+#if ($olposDuplicata)
+        <line size="3"><text align="center" bold="true" length="21">DUPLICATA</text></line>
+#elseif ($olposAjout)
+        <line size="3"><text align="center" bold="true" length="21">AJOUT</text></line>
+#end
+#if ($ticket.getProperty("order.number"))
+        <line size="3"><text align="center" bold="true" length="21">COMMANDE N° ${ticket.getProperty("order.number")}</text></line>
+#end
+        <line><text align="center" length="42">${ticket.printDate()}</text></line>
+#if ($place && "$place" != "")
+        <line size="1"><text align="center" bold="true" length="42">TABLE : ${place}</text></line>
+#else
+        <line size="1"><text align="center" bold="true" length="42">A EMPORTER</text></line>
+#end
+        <line></line>
+        <line><text align="left" length="15">Serveur :</text><text>${ticket.printUser()}</text></line>
+#if ($ticket.getCustomer())
+        <line><text align="left" length="15">Client :</text><text>${ticket.getCustomer().getName()}</text></line>
+#end
+        <line><text>------------------------------------------</text></line>
+#foreach ($ticketline in $ticket.getLines())
+#if ($ticketline.isProductKitchen() && $olposPrinter.equals($ticketline.kitchenPrinter()) && $ticketline.getProperty("sendstatus") && $ticketline.getProperty("sendstatus").equals("No"))
+        <line size="1">
+            <text align="left" length="5">${ticketline.printMultiply()}x</text>
+#if ($ticketline.isProductCom())
+            <text align="left" length="37">--${ticketline.printName()}</text>
+#else
+            <text align="left" length="37">${ticketline.printName()}</text>
+#end
+        </line>
+#if ($ticketline.getProperty("notes"))
+        <line><text align="left" length="42">     * ${ticketline.getProperty("notes")}</text></line>
+#end
+#if ($ticketline.productAttSetInstId)
+        <line><text align="left" length="42">    ${ticketline.productAttSetInstDesc}</text></line>
+#end
+#end
+#end
+        <line><text>------------------------------------------</text></line>
+    </ticket>
+#end
+#end
+</output>

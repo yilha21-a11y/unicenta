@@ -31,6 +31,29 @@ import java.rmi.server.UnicastRemoteObject;
  */
 public class InstanceManager {
     
+    /** Port RMI local d'OLPOS 5 (uniCenta : 1099). */
+    public static final int PORT = Integer.getInteger("olpos.instance.port", 10995);
+    /** Nom de l'objet enregistre (uniCenta : "AppMessage"). */
+    public static final String NAME = "OLPOS5.AppMessage";
+
+    /** Sockets du registre ouvertes sur 127.0.0.1 seulement. */
+    static final class LoopbackServerSocketFactory implements java.rmi.server.RMIServerSocketFactory {
+        @Override
+        public java.net.ServerSocket createServerSocket(int port) throws java.io.IOException {
+            return new java.net.ServerSocket(port, 50, java.net.InetAddress.getLoopbackAddress());
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof LoopbackServerSocketFactory;
+        }
+
+        @Override
+        public int hashCode() {
+            return LoopbackServerSocketFactory.class.hashCode();
+        }
+    }
+
     private final Registry m_registry;
     private final AppMessage m_message;
     
@@ -40,12 +63,16 @@ public class InstanceManager {
      * @throws java.rmi.AlreadyBoundException */
     public InstanceManager(AppMessage message) throws RemoteException, AlreadyBoundException {
 
-        m_registry = LocateRegistry.createRegistry(Registry.REGISTRY_PORT);
+        // OLPOS : port et nom propres (une caisse uniCenta ouverte sur le meme PC
+        // utilise 1099/"AppMessage" : elle ne doit jamais etre prise pour OLPOS),
+        // registre accessible depuis ce PC uniquement (127.0.0.1).
+        m_registry = LocateRegistry.createRegistry(PORT, null, new LoopbackServerSocketFactory());
 
         m_message = message;
 
-        AppMessage stub = (AppMessage) UnicastRemoteObject.exportObject(m_message, 0);
-        m_registry.bind("AppMessage", stub); 
+        AppMessage stub = (AppMessage) UnicastRemoteObject.exportObject(m_message, 0, null,
+                new LoopbackServerSocketFactory());
+        m_registry.bind(NAME, stub);
 
         // jLabel1.setText("Server ready");
     }    

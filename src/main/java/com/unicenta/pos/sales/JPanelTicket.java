@@ -32,7 +32,6 @@ import com.unicenta.data.gui.ComboBoxValModel;
 import com.unicenta.data.gui.ListKeyed;
 import com.unicenta.data.gui.MessageInf;
 import com.unicenta.data.loader.SentenceList;
-import com.unicenta.plugins.Application;
 import com.unicenta.pos.catalog.JCatalog;
 import com.unicenta.pos.customers.*;
 import com.unicenta.pos.forms.*;
@@ -172,7 +171,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
   @Override
   public void init(AppView app) throws BeanFactoryException {
 
-    m_config = new AppConfig(new File((System.getProperty("user.home")), AppLocal.APP_ID + ".properties"));
+    m_config = AppConfig.loadActive(); // OLPOS : config de CETTE instance
     m_config.load();
 
     m_App = app;
@@ -1853,7 +1852,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
               if (m_config.getProperty("till.digital-receipt") != null && m_config.getProperty("till.digital-receipt").equals("true")){
                 log.debug("Send digital receipt");
                 String xml = dlSystem.getResourceAsXML("Printer.Ticket");
-                new Application().sendReceipt(ticket, xml, getActiveWindow());
+                log.warn("Recu numerique uniCenta non disponible dans OLPOS (service en ligne non inclus)");   // OLPOS
               }
 
               executeEvent(ticket, ticketext, "ticket.close",

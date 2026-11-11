@@ -1,7 +1,5 @@
 package com.unicenta.data.loader;
 
-import com.unicenta.plugins.Application;
-import com.unicenta.plugins.metrics.Metrics;
 import com.unicenta.pos.forms.AppLocal;
 import org.junit.Before;
 import org.junit.Test;

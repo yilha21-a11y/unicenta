@@ -316,23 +316,9 @@
         </exclusion>
       </exclusions>
     </dependency>
-    <dependency>
-      <groupId>com.unicenta</groupId>
-      <artifactId>unicenta-plugins</artifactId>
-      <version>1.1</version>
-      <!-- OLPOS : le plugin tire l'ancien uniCenta 4.6.1 complet (doublons de classes)
-           et uk.co.pos_apps:openbravo, introuvable dans les depots publics -->
-      <exclusions>
-        <exclusion>
-          <groupId>com.unicenta</groupId>
-          <artifactId>unicentaopos</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>uk.co.pos_apps</groupId>
-          <artifactId>openbravo</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
+    <!-- OLPOS : com.unicenta:unicenta-plugins retire (binaire sans source ni licence,
+         envoyait des donnees a api.unicenta.io ; tableau de bord, PaymentSense et recu
+         numerique uniCenta desactives) -->
     <!-- OLPOS : uk.co.pos_apps:openbravo (service posApps) introuvable dans les depots publics ; retire -->
     <dependency>
       <groupId>com.gluonhq</groupId>
@@ -433,6 +419,18 @@
   </dependencies>
   <build>
     <plugins>
+      <!-- OLPOS : les tests n'utilisent jamais %LOCALAPPDATA%\OLPOS5 ni l'installation uniCenta -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <systemPropertyVariables>
+            <olpos.datadir>${project.build.directory}/test-olpos-data</olpos.datadir>
+          </systemPropertyVariables>
+          <workingDirectory>${project.basedir}</workingDirectory>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
