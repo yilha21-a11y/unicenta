@@ -365,8 +365,20 @@ public class AppConfig implements AppProperties {
         m_propsconfig.setProperty("machine.uniqueinstance", "false");
         
 //JG July 2014 - Thank you Ron Isaacson On-screen receipt defauls to 42 columns
-        m_propsconfig.setProperty("screen.receipt.columns", "42");        
-        
+        m_propsconfig.setProperty("screen.receipt.columns", "42");
+
+        // Version installee (OLPOS-Setup.exe) : restaurant avec prise de
+        // commande sur telephone activee d'office (page http://<PC>:8095/).
+        // Seuls les serveurs avec mot de passe et la permission mobile.Access
+        // peuvent se connecter. Desactivable : api.enabled=false dans
+        // olpos.properties (case de l'installateur).
+        if (installedDataDirPath() != null) {
+            m_propsconfig.setProperty("machine.ticketsbag", "restaurant");
+            m_propsconfig.setProperty("api.enabled", "true");
+            m_propsconfig.setProperty("api.port", "8095");
+            m_propsconfig.setProperty("api.bind", "0.0.0.0");
+        }
+
 
     }
 }

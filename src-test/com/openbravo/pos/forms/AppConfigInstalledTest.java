@@ -38,6 +38,30 @@ public class AppConfigInstalledTest {
         c.load();
         assertEquals("jdbc:derby:" + new File(dir, "database").getAbsolutePath() + ";create=true",
                 c.getProperty("db.URL"));
+        // Restaurant + mobile actives d'office dans la version installee
+        assertEquals("true", c.getProperty("api.enabled"));
+        assertEquals("8095", c.getProperty("api.port"));
+        assertEquals("restaurant", c.getProperty("machine.ticketsbag"));
+    }
+
+    @Test
+    public void installeeMobileDesactivableDansLeFichier() throws Exception {
+        File dir = new File("build/test-work/olpos-data-off").getAbsoluteFile();
+        System.setProperty("olpos.datadir", dir.getPath());
+        dir.mkdirs();
+        java.nio.file.Files.write(new File(dir, "olpos.properties").toPath(),
+                "api.enabled=false\n".getBytes("ISO-8859-1"));
+        AppConfig c = new AppConfig(new String[0]);
+        c.load();
+        assertEquals("false", c.getProperty("api.enabled"));
+    }
+
+    @Test
+    public void horsInstallationMobileResteDesactive() {
+        AppConfig c = new AppConfig(new File("build/test-work/absent.properties"));
+        c.load();
+        assertNull(c.getProperty("api.enabled"));
+        assertEquals("standard", c.getProperty("machine.ticketsbag"));
     }
 
     @Test

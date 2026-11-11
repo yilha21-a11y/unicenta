@@ -38,6 +38,19 @@ Résultat : `dist\OLPOS-Setup.exe` (≈ 53 Mo). Étapes du script :
   créée au premier lancement (comptes d'exemple uniCenta sans mot de passe :
   à définir dans Maintenance > Utilisateurs).
 
+## Prise de commande sur téléphone
+
+Activée d'office dans la version installée (`AppConfig` : `api.enabled=true`,
+`api.port=8095`, `machine.ticketsbag=restaurant` quand `-Dolpos.installed=true`).
+L'assistant affiche la case « Activer la prise de commande sur téléphone »
+(cochée ; une mise à jour reprend le choix précédent). Décochée, l'installateur
+écrit `api.enabled=false` dans `%LOCALAPPDATA%\OLPOS\olpos.properties` sans
+toucher aux autres réglages ; recochée, il remet `api.enabled=true`.
+
+Une fois par PC : mot de passe du serveur (Maintenance > Utilisateurs) et
+pare-feu Windows (fenêtre « Autoriser l'accès » au premier lancement, Wi-Fi en
+réseau privé). Détails dans `LISEZMOI.txt` installé avec OLPOS.
+
 ## Licences
 
 OLPOS est dérivé d'uniCenta oPOS / Openbravo POS (GNU GPL v3). L'installateur

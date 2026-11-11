@@ -25,3 +25,24 @@ Premier lancement
 La base est creee automatiquement au premier lancement. Les comptes
 d'exemple d'uniCenta (Administrator, Manager, Employee, Guest) n'ont pas de
 mot de passe : definissez-en un dans Maintenance > Utilisateurs.
+
+Prise de commande sur telephone
+-------------------------------
+Activee par defaut (case de l'installateur). Elle demarre a chaque
+lancement d'OLPOS et s'arrete quand on ferme la caisse.
+
+A faire une seule fois par PC :
+1. Donner un mot de passe au serveur (Maintenance > Utilisateurs) :
+   un compte sans mot de passe ne peut pas se connecter depuis un telephone.
+2. Pare-feu Windows : au premier lancement, Windows demande
+   "Autoriser l'acces" pour OLPOS -> cocher "Reseaux prives" et cliquer
+   Autoriser (mot de passe administrateur du PC). Le Wi-Fi du restaurant
+   doit etre en reseau "Prive" (Parametres > Reseau et Internet > Wi-Fi).
+   Sinon, dans une invite de commandes administrateur :
+   netsh advfirewall firewall add rule name="OLPOS mobile" dir=in action=allow protocol=TCP localport=8095 profile=private
+3. Adresse du PC : commande ipconfig -> "Adresse IPv4" (ex. 192.168.1.20).
+   Sur le telephone (meme Wi-Fi) : http://192.168.1.20:8095/
+   iPhone : Safari > Partager > "Sur l'ecran d'accueil".
+
+Desactiver : relancer l'installateur et decocher la case, ou mettre
+api.enabled=false dans %LOCALAPPDATA%\OLPOS\olpos.properties.

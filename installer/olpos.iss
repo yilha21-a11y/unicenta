@@ -96,3 +96,45 @@ Name: "{autodesktop}\OLPOS"; Filename: "{app}\OLPOS.exe"; WorkingDir: "{localapp
 
 [Run]
 Filename: "{app}\OLPOS.exe"; WorkingDir: "{localappdata}\OLPOS"; Description: "{cm:LaunchProgram,OLPOS}"; Flags: nowait postinstall skipifsilent
+
+[Tasks]
+; Cochee par defaut ; une mise a jour reprend le choix precedent
+Name: "mobile"; Description: "Activer la prise de commande sur téléphone (page http://<adresse du PC>:8095/)"; GroupDescription: "Options :"
+
+[Code]
+{ Ecrit api.enabled=true/false dans %LOCALAPPDATA%\OLPOS\olpos.properties.
+  Les autres reglages du fichier sont conserves. Sans fichier et case
+  cochee : rien a ecrire (OLPOS installe active le mobile par defaut). }
+procedure SetMobileEnabled(Enabled: Boolean);
+var
+  FileName, Value: String;
+  Lines, Kept: TArrayOfString;
+  I, N: Integer;
+begin
+  FileName := ExpandConstant('{localappdata}\OLPOS\olpos.properties');
+  if Enabled then Value := 'true' else Value := 'false';
+  N := 0;
+  if FileExists(FileName) then
+  begin
+    if LoadStringsFromFile(FileName, Lines) then
+      for I := 0 to GetArrayLength(Lines) - 1 do
+        if Pos('api.enabled', Trim(Lines[I])) <> 1 then
+        begin
+          SetArrayLength(Kept, N + 1);
+          Kept[N] := Lines[I];
+          N := N + 1;
+        end;
+  end
+  else if Enabled then
+    Exit;
+  SetArrayLength(Kept, N + 1);
+  Kept[N] := 'api.enabled=' + Value;
+  if not SaveStringsToFile(FileName, Kept, False) then
+    Log('Impossible d''ecrire ' + FileName);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    SetMobileEnabled(WizardIsTaskSelected('mobile'));
+end;
