@@ -157,6 +157,8 @@
     <class name="com.unicenta.pos.admin.PeoplePanel"/>
     <class name="com.unicenta.pos.admin.ResourcesPanel"/>
     <class name="com.unicenta.pos.admin.RolesPanel"/>
+    <!-- OLPOS : consultation du portail Patron (lecture seule) -->
+    <class name="portal.Access"/>
     <class name="com.unicenta.pos.inventory.LocationsPanel"/>
     <class name="com.unicenta.pos.mant.JPanelFloors"/>
     <class name="com.unicenta.pos.mant.JPanelPlaces"/>

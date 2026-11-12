@@ -165,11 +165,14 @@ public class AppUser {
 
     if (sRolePermisions != null) {
       try {
-        if (m_sp == null) {
-          SAXParserFactory spf = SAXParserFactory.newInstance();
-          m_sp = spf.newSAXParser();
+        // OLPOS : analyseur partage => un seul fil a la fois (caisse, acces telephone, portail)
+        synchronized (AppUser.class) {
+          if (m_sp == null) {
+            SAXParserFactory spf = SAXParserFactory.newInstance();
+            m_sp = spf.newSAXParser();
+          }
+          m_sp.parse(new InputSource(new StringReader(sRolePermisions)), new ConfigurationHandler());
         }
-        m_sp.parse(new InputSource(new StringReader(sRolePermisions)), new ConfigurationHandler());
 
       } catch (ParserConfigurationException ePC) {
         log.error(LocalRes.getIntString("exception.parserconfig"), ePC);

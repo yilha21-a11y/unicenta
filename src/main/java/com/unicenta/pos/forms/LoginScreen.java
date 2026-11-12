@@ -172,6 +172,11 @@ public final class LoginScreen {
      * Le contenu (boutons des utilisateurs, Quitter) reste celui d'uniCenta.
      */
     public static void styleUserPanel(JPanel panel, JComponent extraButton, JButton closeButton) {
+        styleUserPanel(panel, extraButton, closeButton, null);
+    }
+
+    /** Variante avec un bouton supplementaire sur toute la largeur, au-dessus (portail Patron). */
+    public static void styleUserPanel(JPanel panel, JComponent extraButton, JButton closeButton, JButton topButton) {
         // Quitter et Activation / Licence cote a cote, en bas du panneau
         if (closeButton != null) {
             // Le bouton d'origine reste dans sa mise en page NetBeans mais masque ;
@@ -197,6 +202,15 @@ public final class LoginScreen {
             }
             row.add(quit);
             extraButton = row;
+            if (topButton != null) {
+                topButton.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                topButton.setPreferredSize(new Dimension(300, 40));
+                JPanel both = new JPanel(new BorderLayout(0, 8));
+                both.setOpaque(false);
+                both.add(topButton, BorderLayout.NORTH);
+                both.add(row, BorderLayout.CENTER);
+                extraButton = both;
+            }
         }
         styleUserPanel(panel, extraButton);
     }

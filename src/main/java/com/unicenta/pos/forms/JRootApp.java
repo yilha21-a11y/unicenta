@@ -213,7 +213,10 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
         com.unicenta.pos.license.LicenseDialog.open(this, s);
       }
     });
-    LoginScreen.styleUserPanel(jPanel5, licenseButton, m_jClose);
+    javax.swing.JButton portalButton = new javax.swing.JButton("Portail Patron (consultation à distance)");
+    portalButton.setFocusable(false);
+    portalButton.addActionListener(e -> com.unicenta.pos.portal.PortalDialog.open(this, m_dlSystem, portalControl()));
+    LoginScreen.styleUserPanel(jPanel5, licenseButton, m_jClose, portalButton);
     poweredby.setIcon(Branding.icon(Branding.LOGO_SMALL));
     poweredby.setToolTipText(Branding.NAME + " " + Branding.VERSION + " - version d\u00e9riv\u00e9e d'" + Branding.DERIVED_FROM);
     webMemoryBar1.setShowMaximumMemory(true);
@@ -633,6 +636,7 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
       m_olposSession = AppViewConnection.createAdditionalSession(m_props);
       m_olposServices = com.unicenta.pos.api.OlposServices.start(m_props, m_olposSession, m_TP, m_TTP);
       m_apiServer = m_olposServices.getApiServer();
+      startPortal();
     } catch (BasicException | IOException | RuntimeException e) {
       log.warn("Acces telephone / envoi cuisine non demarre", e);
       stopOlposServices();
@@ -641,7 +645,89 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
     }
   }
 
+  // ---------------------------------------------------------------- portail Patron
+
+  private com.unicenta.pos.portal.PortalLink m_portalLink;
+  private com.unicenta.pos.portal.PortalAgent m_portalAgent;
+  private Session m_portalSession;
+
+  /**
+   * Synchronisation SORTANTE avec le portail Patron, seulement si la caisse a
+   * ete associee. Sans Internet, la caisse fonctionne normalement.
+   */
+  private synchronized void startPortal() {
+    try {
+      if (m_portalLink == null) {
+        m_portalLink = new com.unicenta.pos.portal.PortalLink(AppConfig.getDataDir());
+      }
+      if (!m_portalLink.isPaired() || m_portalAgent != null) {
+        return;
+      }
+      m_portalSession = AppViewConnection.createAdditionalSession(m_props);
+      DataLogicSystem dl = new DataLogicSystem();
+      dl.init(m_portalSession);
+      m_portalAgent = new com.unicenta.pos.portal.PortalAgent(m_portalLink, m_portalSession.getConnection(), dl,
+              portalMeta());
+      m_portalAgent.start();
+    } catch (Exception e) {
+      log.warn("Portail Patron non demarre", e);
+      stopPortal();
+    }
+  }
+
+  private synchronized void stopPortal() {
+    if (m_portalAgent != null) {
+      m_portalAgent.stop();
+      m_portalAgent = null;
+    }
+    if (m_portalSession != null) {
+      m_portalSession.close();
+      m_portalSession = null;
+    }
+  }
+
+  private java.util.Map<String, Object> portalMeta() {
+    java.util.Locale l = java.util.Locale.getDefault();
+    String currency;
+    try {
+      currency = java.util.Currency.getInstance(l).getCurrencyCode();
+    } catch (RuntimeException e) {
+      currency = "EUR";
+    }
+    return com.unicenta.pos.api.Json.obj("currency", currency, "locale", l.toLanguageTag(),
+            "timezone", java.time.ZoneId.systemDefault().getId(), "version", Branding.VERSION);
+  }
+
+  private com.unicenta.pos.portal.PortalDialog.Control portalControl() {
+    return new com.unicenta.pos.portal.PortalDialog.Control() {
+      @Override
+      public com.unicenta.pos.portal.PortalLink link() {
+        if (m_portalLink == null) {
+          m_portalLink = new com.unicenta.pos.portal.PortalLink(AppConfig.getDataDir());
+        }
+        return m_portalLink;
+      }
+
+      @Override
+      public com.unicenta.pos.portal.PortalAgent agent() {
+        return m_portalAgent;
+      }
+
+      @Override
+      public void restart() {
+        stopPortal();
+        startPortal();
+      }
+
+      @Override
+      public java.util.Map<String, Object> meta() {
+        return portalMeta();
+      }
+    };
+  }
+
   private void stopOlposServices() {
+    stopPortal();
     if (m_olposServices != null) {
       m_olposServices.stop();
       m_olposServices = null;
