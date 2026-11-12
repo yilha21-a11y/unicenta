@@ -720,7 +720,7 @@ public class JPanelCloseMoney extends JPanel implements JPanelView, BeanFactoryA
                 msg.show(this);
             }
 
-            if (m_App.getProperties().getProperty("payment.gateway").equals("PaymentSense")) {
+            if ("PaymentSense".equals(m_App.getProperties().getProperty("payment.gateway"))) {
                 log.warn("PaymentSense non disponible dans OLPOS (module uniCenta non inclus)");   // OLPOS
             }
 

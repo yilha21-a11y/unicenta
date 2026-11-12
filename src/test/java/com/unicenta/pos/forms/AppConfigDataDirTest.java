@@ -43,6 +43,10 @@ public class AppConfigDataDirTest {
         assertEquals("true", c.getProperty("api.enabled"));
         assertEquals("8095", c.getProperty("api.port"));
         assertEquals("restaurant", c.getProperty("machine.ticketsbag"));
+        // sans ces valeurs, le plan de salle d'uniCenta 5.0 plantait : ecran Ventes vide
+        assertEquals("false", c.getProperty("till.autoRefreshTableMap"));
+        assertEquals("5", c.getProperty("till.autoRefreshTimer"));
+        assertEquals("fr", c.getProperty("user.language"));
     }
 
     @Test

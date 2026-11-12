@@ -22,7 +22,7 @@ public final class Branding {
 
     public static final String NAME = "OLPOS";
     /** Version d'OLPOS (la version de schema de base reste AppLocal.APP_VERSION). */
-    public static final String VERSION = "5.0.1";
+    public static final String VERSION = "5.0.2";
     public static final String TAGLINE = "Point de vente tactile pour restaurants";
     /** Logiciel d'origine (attribution conservee). */
     public static final String DERIVED_FROM = "uniCenta oPOS 5.0";

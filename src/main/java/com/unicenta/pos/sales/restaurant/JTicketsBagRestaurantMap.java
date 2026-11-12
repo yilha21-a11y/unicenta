@@ -267,7 +267,7 @@ public class JTicketsBagRestaurantMap extends JTicketsBag {
             m_jbtnSave.setVisible(false);            
         }        
         
-        if (m_App.getProperties().getProperty("till.autoRefreshTableMap").equals("true")) {
+        if ("true".equals(m_App.getProperties().getProperty("till.autoRefreshTableMap"))) {
             webLblautoRefresh.setText(java.util.ResourceBundle.getBundle("pos_messages")
                 .getString("label.autoRefreshTableMapTimerON"));        
             

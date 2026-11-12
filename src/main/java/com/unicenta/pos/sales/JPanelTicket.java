@@ -242,7 +242,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
       if (AppConfig.getInstance().getProperty("machine.saleslayout") != null) {
         JSalesLayoutManager.createLayout();
 
-        if (AppConfig.getInstance().getProperty("machine.saleslayout").equals("Layout1")) {
+        if ("Layout1".equals(AppConfig.getInstance().getProperty("machine.saleslayout"))) {
           Component southcomponent = getSouthComponent();
           catcontainer.add(southcomponent, BorderLayout.CENTER);
           JPanel southpanel = (JPanel) southcomponent;
@@ -273,7 +273,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
             m_jContEntries.add(southpanel, BorderLayout.CENTER);
           }
           southcomponent.setPreferredSize(new Dimension(0, 0));
-        } else if (AppConfig.getInstance().getProperty("machine.saleslayout").equals("Layout2")) {
+        } else if ("Layout2".equals(AppConfig.getInstance().getProperty("machine.saleslayout"))) {
           if (catcontainer.getComponent(0) instanceof JCatalog) {
             JCatalog catpanel = (JCatalog) catcontainer.getComponent(0);
             catpanel.setControls("south");
@@ -292,7 +292,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
           m_jPanTicket.add(m_jTicketId, BorderLayout.BEFORE_FIRST_LINE);
           m_jPanTicket.setPreferredSize(new Dimension(390, 316));
           m_jPanTicket.add(m_jContEntries, BorderLayout.SOUTH);
-        } else if (AppConfig.getInstance().getProperty("machine.saleslayout").equals("Layout3")) {
+        } else if ("Layout3".equals(AppConfig.getInstance().getProperty("machine.saleslayout"))) {
           JPanel catPanel = null;
           JPanel jpanelA = new JPanel(new BorderLayout());
           if (catcontainer.getComponent(0) instanceof JCatalog) {
@@ -653,7 +653,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
     if (m_oTicket != null) {
 
-      if (m_App.getProperties().getProperty("override.check").equals("true")) {
+      if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
         Integer secret = Integer.parseInt(m_App.getProperties().getProperty("override.pin"));
         Integer iValue = JNumberPop.showEditNumber(this, AppLocal.getIntString("title.override.enterpin"));
 
@@ -721,7 +721,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
     } else if (oProduct.getID().equals("xxx998_998xxx_x8x8x8")) {
 
-      if (m_App.getProperties().getProperty("till.SCOnOff").equals("true")) {
+      if ("true".equals(m_App.getProperties().getProperty("till.SCOnOff"))) {
         TaxInfo tax = taxeslogic.getTaxInfo(oProduct.getTaxCategoryID(),
                 m_oTicket.getCustomer());
         String SCRate = (m_App.getProperties().getProperty("till.SCRate"));
@@ -829,7 +829,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
   private void removeTicketLine(int i) {
 
-//        if (m_App.getProperties().getProperty("override.check").equals("true")) {
+//        if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
     if (!m_oTicket.getLine(i).getUpdated()) {
       JOptionPane.showMessageDialog(this
               , AppLocal.getIntString("message.deletelinesent")
@@ -1570,7 +1570,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
           TicketLineInfo newline = new TicketLineInfo(m_oTicket.getLine(i));
           //If it's a refund + button means one unit less
           if (m_oTicket.getTicketType() == TicketInfo.RECEIPT_REFUND) {
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
               oCount = count - 1;  //increment existing line
               pinOK = false;
               changeCount(pinOK);
@@ -1583,7 +1583,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
               paintTicketLine(i, newline);
             }
           } else {
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
               oCount = count + 1;  //increment existing line
               pinOK = false;
               if (changeCount(pinOK)) {
@@ -1610,7 +1610,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
           TicketLineInfo newline = new TicketLineInfo(m_oTicket.getLine(i));
 
           if (m_oTicket.getTicketType() == TicketInfo.RECEIPT_REFUND) {
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
               oCount = count - 1;  //increment existing line
               pinOK = false;
               changeCount(pinOK);
@@ -1629,7 +1629,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
               paintTicketLine(i, newline);
             }
           } else {
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
               oCount = count - 1;  //increment existing line
               pinOK = false;
               if (changeCount(pinOK)) {
@@ -1663,7 +1663,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
           TicketLineInfo newline = new TicketLineInfo(m_oTicket.getLine(i));
 
           if (m_oTicket.getTicketType() == TicketInfo.RECEIPT_REFUND) {
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
               oCount = count - 1;  //increment existing line
               pinOK = false;
               changeCount(pinOK);
@@ -1678,7 +1678,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
               paintTicketLine(i, newline);
             }
           } else {
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
               oCount = count + 1;  //increment existing line
               pinOK = false;
               if (changeCount(pinOK)) {
@@ -1708,7 +1708,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
           TicketLineInfo newline = new TicketLineInfo(m_oTicket.getLine(i));
 
           if (m_oTicket.getTicketType() == TicketInfo.RECEIPT_REFUND) {
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
               oCount = count - 1;  //increment existing line
               pinOK = false;
               changeCount(pinOK);
@@ -1723,7 +1723,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
               paintTicketLine(i, newline);
             }
           } else {
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
               oCount = count - 1;  //increment existing line
               pinOK = false;
               if (changeCount(pinOK)) {
@@ -1870,7 +1870,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
                 log.error(ex.getMessage());
               }
 
-              if (m_config.getProperty("till.digital-receipt") != null && m_config.getProperty("till.digital-receipt").equals("true")){
+              if (m_config.getProperty("till.digital-receipt") != null && "true".equals(m_config.getProperty("till.digital-receipt"))){
                 log.debug("Send digital receipt");
                 String xml = dlSystem.getResourceAsXML("Printer.Ticket");
                 log.warn("Recu numerique uniCenta non disponible dans OLPOS (service en ligne non inclus)");   // OLPOS
@@ -2997,7 +2997,7 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
   private void m_jDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_m_jDeleteActionPerformed
     int i = m_ticketlines.getSelectedIndex();
-    if (m_App.getProperties().getProperty("override.check").equals("true")) {
+    if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
       pinOK = false;
       if (changeCount(pinOK)) {
         if (i < 0) {

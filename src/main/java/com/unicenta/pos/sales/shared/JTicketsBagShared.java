@@ -458,7 +458,7 @@ public class JTicketsBagShared extends JTicketsBag {
 
         if (m_sCurrentTicket != null) {
 
-            if (m_App.getProperties().getProperty("override.check").equals("true")) {
+            if ("true".equals(m_App.getProperties().getProperty("override.check"))) {
                 Integer secret = Integer.parseInt(m_App.getProperties().getProperty("override.pin"));
                 Integer iValue = JNumberPop.showEditNumber(this, AppLocal.getIntString("title.override.enterpin")); 
 

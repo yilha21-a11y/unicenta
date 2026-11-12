@@ -373,6 +373,11 @@ public class AppConfig implements AppProperties {
    */
   private void setOlposProperties(Properties properties) {
     properties.setProperty("machine.ticketsbag", "restaurant");
+    // valeurs que l'ecran Configuration d'uniCenta 5.0 ecrit a la premiere
+    // sauvegarde : sans elles, le plan de salle plantait (ventes vides)
+    properties.setProperty("till.autoRefreshTableMap", "false");
+    properties.setProperty("till.autoRefreshTimer", "5");
+    properties.setProperty("till.SCOnOff", "false");
     properties.setProperty("api.enabled", "true");
     properties.setProperty("api.port", "8095");
     properties.setProperty("api.bind", "0.0.0.0");
