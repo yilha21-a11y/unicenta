@@ -376,6 +376,11 @@ public class AppConfig implements AppProperties {
     properties.setProperty("api.enabled", "true");
     properties.setProperty("api.port", "8095");
     properties.setProperty("api.bind", "0.0.0.0");
+    // interface en francais par defaut (Configuration > Locale pour changer ;
+    // la devise suit ce reglage)
+    properties.setProperty("user.language", "fr");
+    properties.setProperty("user.country", "FR");
+    properties.setProperty("user.variant", "");
   }
 
 

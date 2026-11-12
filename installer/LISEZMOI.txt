@@ -1,0 +1,32 @@
+OLPOS 5 - caisse pour restaurants
+=================================
+
+OLPOS est une version derivee d'uniCenta oPOS 5.0 (elle-meme derivee
+d'Openbravo POS). C'est un logiciel libre distribue sous la licence GNU
+General Public License version 3 (voir licences\). OLPOS n'est ni produit ni
+soutenu par uniCenta.
+Code source : https://github.com/yilha21-a11y/unicenta
+
+Guides (menu Demarrer > OLPOS - Guides, dossier docs\) :
+  INSTALLATION.md         installer et configurer OLPOS
+  TELEPHONE.md            connecter un telephone
+  HTTPS.md                chiffrer les echanges avec les telephones
+  IMPRIMANTE-CUISINE.md   configurer et tester une imprimante cuisine
+  LICENCE.md              activer et renouveler la licence
+
+Emplacements
+------------
+Programme : %LOCALAPPDATA%\Programs\OLPOS5   (remplace par les mises a jour)
+Donnees   : %LOCALAPPDATA%\OLPOS5            (configuration, base, journaux,
+                                             licence, certificat HTTPS)
+Les donnees ne sont supprimees ni par une mise a jour ni par la
+desinstallation. Une installation uniCenta ou OLPOS 3.81 existante n'est
+pas modifiee.
+
+Premier lancement
+-----------------
+1. Acceptez la creation de la base.
+2. Activation / Licence (bouton de l'ecran de connexion) : sans licence,
+   les nouvelles ventes sont bloquees.
+3. Donnez un mot de passe aux comptes (Maintenance > Utilisateurs).
+4. Telephones : voir docs\TELEPHONE.md (pare-feu, adresse du PC).

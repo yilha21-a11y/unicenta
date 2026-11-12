@@ -1,47 +1,43 @@
-# uniCenta oPos 5.0
+# OLPOS 5
 
-link for original files https://sourceforge.net/projects/unicentaopos/files/source
+Caisse tactile pour restaurants : **version dérivée d'uniCenta oPOS 5.0**
+(elle-même dérivée d'Openbravo POS), licence **GNU GPL v3** (`LICENSE.md`).
+OLPOS n'est ni produit ni soutenu par uniCenta.
 
-# Requirements to run the uploaded code:
+- Prise de commande sur téléphone (navigateur, Wi-Fi du restaurant), HTTPS possible
+- Envoi en cuisine fiable (même service pour la caisse et les téléphones)
+- Numéro de commande 1 à 100 commun aux tickets et aux bons cuisine
+- Activation par licence signée ; outil administrateur séparé : OLPOS License Manager
 
-* ## Java JDK 11
-* ## Maven 3.9.8
-* ## MySQL Database
-* ## Internet Connection to download dependencies
+## Guides
 
-## Overview
+| Guide | |
+|---|---|
+| `docs/INSTALLATION.md` | installer et configurer OLPOS |
+| `docs/TELEPHONE.md` | connecter un téléphone |
+| `docs/HTTPS.md` | chiffrer les échanges avec les téléphones |
+| `docs/IMPRIMANTE-CUISINE.md` | configurer et tester une imprimante cuisine |
+| `docs/LICENCE.md` | activer et renouveler une licence |
+| `license-manager/GUIDE.md` | utiliser et sauvegarder OLPOS License Manager (administrateur) |
+| `MIGRATION-OLPOS5.md` | portage vers uniCenta 5.0 : décisions et tableau de migration |
 
-uniCenta oPos is an enterprise level point of sale system and it has the following feature set
+## Construire
 
-* Sales
-* Inventory
-* Customers
-* Suppliers
-* Employees
-* Reporting
+Prérequis : JDK 17, Maven 3.9, Inno Setup 6.
 
-It runs on the following operating systems
-
-* Windows
-* Linux
-* Mac osX
-
-Full details can be found here: https://unicenta.com
-
-## Before you start
-Install mysql (version 5X supported) and create a schema called unicentaopos
-
-## Build and Run the appication
-To get started, simply clone the repository and build the artifacts
-### build the artifacts
 ```
-mvn clean package
-```
-### run the application
-```
-java -jar ./target/unicentaopos
+mvn test                                  # tests d'OLPOS (base Derby de test, jamais ~/.unicenta)
+mvn -f license-manager/pom.xml test       # tests du gestionnaire de licences
+build-installers.bat 5.0.1 1.0.0          # dist\OLPOS5-Setup.exe et dist-admin\OLPOS-License-Manager-Setup.exe
 ```
 
-# Note: *if this java -jar ./target/unicentaopos fails. use start.bat or start.sh depending on operating system you using. start.bat and start.sh are located in the target folder*
+La clé **publique** de vérification des licences est dans
+`src/main/resources/com/olpos/license/trusted-keys.properties` (exportée depuis
+OLPOS License Manager). Aucune clé privée n'est dans ce dépôt ni dans les
+installateurs.
 
+## Origine
 
+Code d'origine : uniCenta oPOS 5.0 community
+(<https://sourceforge.net/projects/unicentaopos/files/source>), importé tel quel
+dans la branche `upstream/unicenta-5.0`.

@@ -1,0 +1,39 @@
+OLPOS - licences et attributions
+================================
+
+OLPOS est une version derivee d'uniCenta oPOS 5.0
+(Copyright (c) 2009-2018 uniCenta & previous Openbravo POS works,
+https://unicenta.com), lui-meme derive d'Openbravo POS (Openbravo S.L.).
+OLPOS n'est ni produit ni soutenu par uniCenta.
+
+Licence du programme : GNU General Public License version 3
+  - LICENCE-GPL-3.0.txt       texte complet de la GPL v3
+  - uniCenta-licence.txt      licence fournie avec uniCenta oPOS 5.0
+Code source : https://github.com/yilha21-a11y/unicenta (branche feature/olpos5-migration)
+
+Le systeme d'activation (licences signees) protege l'usage du programme
+distribue. Il ne retire aucun des droits donnes par la GPL v3 : vous pouvez
+obtenir, etudier, modifier et redistribuer le code source selon ses termes.
+
+Bibliotheques tierces
+---------------------
+BIBLIOTHEQUES-TIERCES.txt liste les bibliotheques incluses (fichiers .jar du
+dossier app\lib du programme) avec la licence declaree par chacune. Les
+fichiers de licence fournis par les bibliotheques sont conserves dans leurs
+.jar (dossier META-INF).
+
+Les lignes "Unknown license" correspondent a des bibliotheques reprises
+telles quelles d'uniCenta oPOS 5.0 dont le fichier Maven ne declare pas de
+licence (par ex. Spring 3.0, Ant, Axis, Xalan, Substance, Trident, iText
+2.1.7, jPOS, OneWireAPI, olap4j, persistence-api). Leur licence reelle doit
+etre verifiee avant toute redistribution commerciale ; aucune n'a ete
+ajoutee par OLPOS.
+
+Retires par OLPOS par rapport a uniCenta oPOS 5.0 :
+  - com.unicenta:unicenta-plugins (binaire sans source ni licence ; envoyait
+    le nom du PC et la version a api.unicenta.io) ;
+  - com.gluonhq:charm-glisten (composant commercial inutilise) ;
+  - uk.co.pos_apps:openbravo (introuvable dans les depots publics).
+
+Java : le runtime OpenJDK inclus (dossier runtime) contient ses propres
+licences dans runtime\legal.

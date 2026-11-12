@@ -2,3 +2,7 @@ target/
 /dist/
 /build/
 derby.log
+/dist-admin/
+*.olposkey
+*.olposlm
+olpos-license-manager.dat*
