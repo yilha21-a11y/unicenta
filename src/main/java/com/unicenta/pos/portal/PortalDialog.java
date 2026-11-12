@@ -215,9 +215,11 @@ public final class PortalDialog {
                 if (!right) {
                     continue;
                 }
-                boolean enrolled = link.totpSecret(u.getId()) != null;
+                String mode = link.totpSecret(u.getId());
+                boolean enrolled = mode != null;
                 JLabel l = new JLabel("<html><b>" + esc(u.getName()) + "</b> — " + (!pass ? "sans mot de passe : refusé"
-                        : enrolled ? "autorisé" : "non autorisé") + "</html>");
+                        : !enrolled ? "non autorisé" : PortalLink.NO_CODE.equals(mode)
+                        ? "autorisé (mot de passe seul)" : "autorisé (mot de passe + code)") + "</html>");
                 JButton b;
                 if (enrolled) {
                     b = new JButton("Retirer l'accès");
@@ -259,8 +261,32 @@ public final class PortalDialog {
         return wrap;
     }
 
-    /** Activation : secret genere sur la caisse, confirme par un premier code. */
+    /** Autorisation : avec code a 6 chiffres (recommande) ou mot de passe seul. */
     private static void enroll(JDialog d, PortalLink link, AppUser u) {
+        Object[] options = {"Avec code à 6 chiffres (recommandé)", "Mot de passe seul", "Annuler"};
+        int choice = JOptionPane.showOptionDialog(d, "<html>Comment " + esc(u.getName()) + " se connectera au portail ?"
+                + "<br><br><b>Avec code</b> : mot de passe + code d'une application sur le téléphone (plus sûr)."
+                + "<br><b>Mot de passe seul</b> : plus simple ; quelqu'un qui connaît le mot de passe "
+                + "pourra voir les ventes.</html>", "Autoriser " + u.getName(), JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        if (choice == 1) {
+            try {
+                link.enroll(u.getId(), PortalLink.NO_CODE);
+                JOptionPane.showMessageDialog(d, u.getName() + " peut se connecter au portail Patron avec son "
+                        + "mot de passe.", "Portail Patron", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                error(d, ex);
+            }
+            return;
+        }
+        if (choice != 0) {
+            return;
+        }
+        enrollWithCode(d, link, u);
+    }
+
+    /** Activation avec code : secret genere sur la caisse, confirme par un premier code. */
+    private static void enrollWithCode(JDialog d, PortalLink link, AppUser u) {
         String secret = Totp.newSecret();
         String uri = Totp.uri(secret, u.getName(), "OLPOS " + (link.slug() == null ? "" : link.slug()));
         JTextArea info = new JTextArea("1. Dans l'application d'authentification du patron, ajoutez un compte "

@@ -68,12 +68,12 @@ function showLogin(msg) {
   $('#view').innerHTML = '<form class="card login" id="f">'
     + '<h1>Connexion du patron</h1>'
     + '<p class="muted">Utilisez l\'identifiant et le mot de passe de votre compte Administrateur OLPOS, '
-    + 'puis le code de votre application de double authentification. Votre mot de passe est chiffré pour '
+    + 'et le code à 6 chiffres seulement si la double authentification est activée. Votre mot de passe est chiffré pour '
     + 'la caisse de votre restaurant : le portail ne peut pas le lire.</p>'
     + '<label>Code du restaurant<input id="rest" autocomplete="organization" required value="' + esc(last) + '"></label>'
     + '<label>Identifiant OLPOS<input id="user" autocomplete="username" required></label>'
     + '<label>Mot de passe<input id="pwd" type="password" autocomplete="current-password" required></label>'
-    + '<label>Code de double authentification (6 chiffres)<input id="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>'
+    + '<label>Code à 6 chiffres <span class="muted">(seulement si activé à la caisse — sinon laisser vide)</span><input id="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"></label>'
     + '<button class="primary" type="submit" id="go">Se connecter</button></form>';
   banner(msg || null, !!msg);
   if (!window.crypto || !window.crypto.subtle) {

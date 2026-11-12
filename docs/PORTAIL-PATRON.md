@@ -30,9 +30,10 @@ cours, exports CSV et PDF.
   (`%LOCALAPPDATA%\OLPOS5\portail\file\`) et partent au retour de la connexion,
   dans l'ordre, sans doublon.
 * **Connexion du patron = le même identifiant et le même mot de passe que sur la
-  caisse** (compte administrateur), plus un **code à 6 chiffres** d'une
-  application d'authentification (Google Authenticator, Microsoft
-  Authenticator, etc.).
+  caisse** (compte administrateur). Le **code à 6 chiffres** d'une application
+  d'authentification (Google Authenticator, Microsoft Authenticator, etc.) est
+  **facultatif** : il se choisit compte par compte à la caisse (« avec code »,
+  recommandé, ou « mot de passe seul »).
 
 ### Le mot de passe ne passe jamais en clair par le portail
 
@@ -60,7 +61,7 @@ Le secret de double authentification reste **uniquement sur la caisse**.
 | Lecture seule | Toutes les adresses du patron refusent POST/PUT/DELETE (`405`), sauf connexion et déconnexion. Aucune adresse ne modifie la caisse. |
 | Compte sans mot de passe | Refusé (vérifié par la caisse). |
 | Droit nécessaire | Droit d'administration (`RolesPanel`) ou permission `portal.Access`, **et** double authentification activée à la caisse pour ce compte. |
-| Double authentification | Code TOTP à 6 chiffres (RFC 6238), un même code ne sert qu'une fois. |
+| Double authentification | Au choix pour chaque compte : code TOTP à 6 chiffres (RFC 6238, un même code ne sert qu'une fois) ou mot de passe seul. Sans code, quelqu'un qui connaît le mot de passe peut voir les ventes : utiliser un mot de passe solide. |
 | Essais limités | 5 échecs / 15 min par compte et restaurant (portail **et** caisse), 20 par adresse IP. |
 | Sessions | Cookie `HttpOnly`, `SameSite=Strict`, `Secure` derrière HTTPS ; expire après 30 min d'inactivité et au plus 12 h ; jeton stocké haché (SHA-256). |
 | Révocation | Changement de mot de passe, de rôle, de droit ou de double authentification à la caisse ⇒ les sessions ouvertes sont fermées dès le contact suivant (≤ 60 s si la caisse est en ligne). |
@@ -100,17 +101,20 @@ java -jar olpos-portal.jar serve --data D:\olpos-portail --bind 127.0.0.1 --port
 2. Saisir l'identifiant et le mot de passe d'un **administrateur** (un compte
    sans mot de passe est refusé).
 3. Saisir l'adresse du portail (`https://…`) et le **code d'association** → **Associer**.
-4. Dans « Comptes autorisés », cliquer **Autoriser** pour le compte du patron :
-   ajouter la clé affichée dans l'application d'authentification du téléphone
-   (saisie manuelle, « basé sur le temps »), puis taper le code à 6 chiffres
-   pour confirmer.
+4. Dans « Comptes autorisés », cliquer **Autoriser** pour le compte du patron,
+   puis choisir :
+   * **Avec code à 6 chiffres (recommandé)** : ajouter la clé affichée dans
+     l'application d'authentification du téléphone (saisie manuelle, « basé sur
+     le temps »), puis taper le code à 6 chiffres pour confirmer ;
+   * **Mot de passe seul** : rien d'autre à faire.
 
 ![Fenêtre Portail Patron de la caisse](captures/portail/caisse-portail.png)
 
 ### C. Le patron
 
 Ouvrir l'adresse du portail, saisir : **code du restaurant** (ex. `le-bistrot`),
-identifiant OLPOS, mot de passe, code à 6 chiffres.
+identifiant OLPOS, mot de passe, et le code à 6 chiffres seulement si le compte
+a été autorisé « avec code » (sinon laisser vide).
 
 ---
 

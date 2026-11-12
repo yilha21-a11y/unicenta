@@ -183,6 +183,10 @@ public final class PortalLink {
 
     // ================================================================== double authentification
 
+    /** Compte autorise SANS code a 6 chiffres (mot de passe seul), choix fait a la caisse. */
+    public static final String NO_CODE = "sans-code";
+
+    /** Secret TOTP du compte, {@link #NO_CODE} (mot de passe seul) ou null (non autorise). */
     public synchronized String totpSecret(String uid) {
         return totp.getProperty(uid);
     }

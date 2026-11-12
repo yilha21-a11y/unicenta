@@ -79,7 +79,8 @@ public final class PortalDemo {
         DataLogicSystem dl = new DataLogicSystem();
         dl.init(session);
         PortalLink link = new PortalLink(new File(dir, "donnees-olpos"));
-        String secret = Totp.newSecret();
+        boolean noCode = args.length > 4 && "sans-code".equals(args[4]);
+        String secret = noCode ? PortalLink.NO_CODE : Totp.newSecret();
         link.enroll("0", secret);
         java.util.Map<String, Object> meta = Json.obj("currency", "EUR", "locale", "fr-FR",
                 "timezone", zone.getId(), "version", com.unicenta.pos.forms.Branding.VERSION);
@@ -93,9 +94,10 @@ public final class PortalDemo {
         agent.syncOnce();
         agent.start();
         File codeFile = new File(dir, "code-2fa.txt");
-        while (true) {
+        while (!noCode) {
             Files.write(codeFile.toPath(), Totp.code(secret, System.currentTimeMillis()).getBytes(StandardCharsets.US_ASCII));
             Thread.sleep(1000);
         }
+        Thread.currentThread().join();   // mot de passe seul : rien a afficher, la caisse continue
     }
 }

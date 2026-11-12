@@ -185,6 +185,25 @@ public class PortalTillIntegrationTest {
     }
 
     @Test
+    public void compteAutoriseSansCodeMotDePasseSeul() throws Exception {
+        PortalLink l = link("auth-sans-code");
+        l.enroll("0", PortalLink.NO_CODE);
+        long now = System.currentTimeMillis();
+        PortalAuthenticator a = new PortalAuthenticator(l, dl, () -> now);
+        assertEquals(true, ask(a, l, "r1", "n1", "Administrator", ADMIN_PASSWORD, "").get("ok"));
+        assertEquals("le meme acces peut se reconnecter", true,
+                ask(a, l, "r2", "n2", "Administrator", ADMIN_PASSWORD, "").get("ok"));
+        assertEquals("invalid", ask(a, l, "r3", "n3", "Administrator", "faux", "").get("reason"));
+        // compte sans mot de passe : toujours refuse, meme sans code
+        l.enroll("1", PortalLink.NO_CODE);
+        assertEquals("no_password", ask(a, l, "r4", "n4", "Manager", "", "").get("reason"));
+        // passer de "sans code" a "avec code" change l'empreinte (sessions fermees)
+        String before = l.stamp("0", "sha1:A", "0", true);
+        l.enroll("0", Totp.newSecret());
+        assertNotEquals(before, l.stamp("0", "sha1:A", "0", true));
+    }
+
+    @Test
     public void refusMauvaisMotDePasseMauvaisCodeEtBlocage() throws Exception {
         PortalLink l = link("auth-ko");
         String secret = Totp.newSecret();

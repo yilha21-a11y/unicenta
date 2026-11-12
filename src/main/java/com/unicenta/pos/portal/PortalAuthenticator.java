@@ -112,13 +112,16 @@ public final class PortalAuthenticator {
             return deny("not_enrolled");
         }
         long now = clock.getAsLong();
-        long step = Totp.matchStep(secret, code, now);
-        Long last = usedSteps.get(uid);
-        if (step < 0 || (last != null && step <= last)) {
-            fail(uid);
-            return deny("invalid");
+        if (!PortalLink.NO_CODE.equals(secret)) {
+            // compte avec double authentification : code a 6 chiffres obligatoire
+            long step = Totp.matchStep(secret, code, now);
+            Long last = usedSteps.get(uid);
+            if (step < 0 || (last != null && step <= last)) {
+                fail(uid);
+                return deny("invalid");
+            }
+            usedSteps.put(uid, step);   // un meme code ne sert qu'une fois
         }
-        usedSteps.put(uid, step);   // un meme code ne sert qu'une fois
         failures.remove(uid);
         Map<String, Object> a = Json.obj("v", 1L, "rid", link.restaurantId(), "req", requestId, "nonce", nonce,
                 "uid", uid, "name", user.getName(), "stamp", link.stamp(uid, user.getPassword(), user.getRole(), true),
