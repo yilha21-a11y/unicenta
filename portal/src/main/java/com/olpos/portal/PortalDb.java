@@ -71,6 +71,22 @@ public final class PortalDb implements AutoCloseable {
                 }
             }
         }
+        // versions des donnees (un lot plus ancien n'ecrase jamais une version plus recente)
+        ensureColumn("TICKETS", "REV", "BIGINT NOT NULL DEFAULT 0");
+        ensureColumn("CLOSURES", "REV", "BIGINT NOT NULL DEFAULT 0");
+        ensureColumn("OPEN_ORDERS", "REV", "BIGINT NOT NULL DEFAULT 0");
+        ensureColumn("DEVICES", "LAST_SEQ", "BIGINT NOT NULL DEFAULT 0");
+    }
+
+    private void ensureColumn(String table, String column, String type) throws SQLException {
+        try (ResultSet rs = c.getMetaData().getColumns(null, null, table, column)) {
+            if (rs.next()) {
+                return;
+            }
+        }
+        try (Statement st = c.createStatement()) {
+            st.executeUpdate("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
+        }
     }
 
     private boolean tableExists(String name) throws SQLException {

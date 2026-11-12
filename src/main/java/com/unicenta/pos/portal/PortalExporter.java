@@ -62,19 +62,73 @@ public final class PortalExporter {
             ps.setMaxRows(MAX_TICKETS);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Properties attr = props(rs.getBytes(4));
-                    Map<String, Object> t = Json.obj("id", rs.getString(1), "ts", rs.getTimestamp(2).getTime(),
-                            "money", rs.getString(3), "type", (long) rs.getInt(5), "ticketNo", (long) rs.getInt(6),
-                            "person", rs.getString(7), "personName", rs.getString(8));
-                    String on = attr.getProperty("order.number");
-                    t.put("orderNumber", on == null ? null : (Object) Long.parseLong(on.trim()));
-                    t.put("place", attr.getProperty("olpos.place"));
-                    out.add(t);
+                    out.add(header(rs));
                 }
             }
         }
         for (Object o : out) {
             fill(asMap(o));
+        }
+        return out;
+    }
+
+    /** Un ticket encaisse complet, ou null s'il n'existe plus. */
+    public Map<String, Object> ticket(String id) throws SQLException {
+        Map<String, Object> t = null;
+        try (PreparedStatement ps = c().prepareStatement("SELECT r.ID, r.DATENEW, r.MONEY, r.ATTRIBUTES, t.TICKETTYPE,"
+                + " t.TICKETID, t.PERSON, p.NAME FROM receipts r JOIN tickets t ON r.ID = t.ID"
+                + " LEFT JOIN people p ON t.PERSON = p.ID WHERE r.ID = ?")) {
+            ps.setString(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    t = header(rs);
+                }
+            }
+        }
+        if (t != null) {
+            fill(t);
+        }
+        return t;
+    }
+
+    private static Map<String, Object> header(ResultSet rs) throws SQLException {
+        Properties attr = props(rs.getBytes(4));
+        Map<String, Object> t = Json.obj("id", rs.getString(1), "ts", rs.getTimestamp(2).getTime(),
+                "money", rs.getString(3), "type", (long) rs.getInt(5), "ticketNo", (long) rs.getInt(6),
+                "person", rs.getString(7), "personName", rs.getString(8));
+        String on = attr.getProperty("order.number");
+        t.put("orderNumber", on == null ? null : (Object) Long.parseLong(on.trim()));
+        t.put("place", attr.getProperty("olpos.place"));
+        return t;
+    }
+
+    /**
+     * Empreinte de CHAQUE ticket encaisse (date, caisse, type, numero, vendeur,
+     * lignes, taxes, paiements) : sert a retrouver les ventes antidatees, les
+     * tickets corriges et les tickets supprimes, quelle que soit leur date.
+     */
+    public Map<String, String> fingerprints() throws SQLException {
+        Map<String, String> out = new java.util.HashMap<>();
+        try (PreparedStatement ps = c().prepareStatement("SELECT r.ID, r.DATENEW, r.MONEY, t.TICKETTYPE, t.TICKETID,"
+                + " t.PERSON,"
+                + " (SELECT COUNT(*) FROM ticketlines l WHERE l.TICKET = r.ID),"
+                + " (SELECT SUM(l.UNITS * l.PRICE) FROM ticketlines l WHERE l.TICKET = r.ID),"
+                + " (SELECT SUM(l.UNITS) FROM ticketlines l WHERE l.TICKET = r.ID),"
+                + " (SELECT COUNT(*) FROM taxlines x WHERE x.RECEIPT = r.ID),"
+                + " (SELECT SUM(x.AMOUNT) FROM taxlines x WHERE x.RECEIPT = r.ID),"
+                + " (SELECT COUNT(*) FROM payments y WHERE y.RECEIPT = r.ID),"
+                + " (SELECT SUM(y.TOTAL) FROM payments y WHERE y.RECEIPT = r.ID)"
+                + " FROM receipts r JOIN tickets t ON r.ID = t.ID");
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                StringBuilder b = new StringBuilder();
+                b.append(rs.getTimestamp(2).getTime()).append('|').append(rs.getString(3)).append('|')
+                        .append(rs.getInt(4)).append('|').append(rs.getInt(5)).append('|').append(rs.getString(6));
+                for (int i = 7; i <= 13; i++) {
+                    b.append('|').append(Math.round(rs.getDouble(i) * 1000));
+                }
+                out.put(rs.getString(1), b.toString());
+            }
         }
         return out;
     }
@@ -89,6 +143,7 @@ public final class PortalExporter {
         boolean refund = ((Long) t.get("type")) == 1L;
         List<Object> lines = new ArrayList<>();
         double discounts = 0;
+        double linesBase = 0;
         try (PreparedStatement ps = c().prepareStatement("SELECT tl.LINE, tl.PRODUCT, tl.UNITS, tl.PRICE, tl.ATTRIBUTES,"
                 + " pr.NAME, ca.NAME, tx.RATE FROM ticketlines tl LEFT JOIN products pr ON tl.PRODUCT = pr.ID"
                 + " LEFT JOIN categories ca ON pr.CATEGORY = ca.ID LEFT JOIN taxes tx ON tl.TAXID = tx.ID"
@@ -104,13 +159,17 @@ public final class PortalExporter {
                     if (discount) {
                         discounts += -units * price;
                     }
+                    linesBase += units * price;
                     lines.add(Json.obj("line", (long) rs.getInt(1), "productId", rs.getString(2), "name", name,
                             "category", rs.getString(7), "units", units, "price", price, "total", units * price,
                             "taxRate", rs.getDouble(8), "discount", discount));
                 }
             }
         }
-        double base = 0;
+        // HT = somme des lignes. Les lignes de taxe ne s'additionnent PAS pour le HT :
+        // deux taxes (ex. 5 % et 7 %) sur 100 donnent deux lignes de base 100,
+        // soit 100 HT + 12 de taxes = 112 (et non 200 + 12).
+        double base = linesBase;
         double tax = 0;
         List<Object> taxes = new ArrayList<>();
         try (PreparedStatement ps = c().prepareStatement("SELECT tx.NAME, tl.BASE, tl.AMOUNT FROM taxlines tl"
@@ -118,7 +177,6 @@ public final class PortalExporter {
             ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    base += rs.getDouble(2);
                     tax += rs.getDouble(3);
                     taxes.add(Json.obj("name", rs.getString(1), "base", rs.getDouble(2), "amount", rs.getDouble(3)));
                 }

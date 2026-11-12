@@ -201,6 +201,74 @@ Une seule instance peut servir plusieurs restaurants.
 
 ---
 
+## 5 bis. Base MySQL et corrections de l'audit (12/11/2026)
+
+### Synchronisation (fonctionnement actuel)
+
+* Toutes les 60 s : nouveaux tickets. Toutes les 10 min (et au démarrage) :
+  **rapprochement** par empreinte de chaque ticket. Les ventes **antidatées**,
+  les tickets **corrigés** et les tickets **supprimés** sont donc aussi
+  envoyés, quelle que soit leur date.
+* Chaque lot porte une **version croissante** : le portail n'écrase jamais une
+  version plus récente par un lot plus ancien (ticket, suppression, clôture,
+  commandes en cours, état des comptes).
+* Les lots sont rangés **par restaurant** (`portail\sync\<restaurant>\`). Une
+  nouvelle association supprime les lots et curseurs des autres restaurants ;
+  un lot marqué pour un autre restaurant n'est jamais envoyé, et le portail le
+  refuserait (409).
+* Avec MySQL, la connexion à la base est redemandée à chaque cycle : après une
+  coupure ou un redémarrage de MySQL, l'envoi reprend tout seul.
+
+### Corrections de l'audit
+
+| Point | État trouvé | Correction | Test de régression |
+|---|---|---|---|
+| 1. Ne jamais clôturer une commande si l'enregistrement échoue | **Défaut** : l'erreur était affichée puis la vente était imprimée et la table libérée (caisse) ; reçu « payé » imprimé (compte client) | Arrêt immédiat, commande laissée ouverte (`TicketSave`) | `TicketSaveTest` + vente refusée pendant l'arrêt de MySQL |
+| 2. Taxes 5 % + 7 % sur 100 = 112 | **Défaut** : 212 (HT compté sur chaque ligne de taxe) | HT = somme des lignes | `deuxTaxesSurLaMemeBaseDonnent112` |
+| 3. Nouvelle association | **Défaut** : l'ancienne file pouvait partir vers le nouveau restaurant | Files par restaurant, purge, refus 409 côté portail | `nouvelleAssociationNEnvoieJamais…`, `lotDUnAutreRestaurantRefuse` |
+| 4. Ventes antidatées / corrections | **Défaut** : jamais renvoyées (curseur par date) | Rapprochement par empreinte, suppressions | `venteAntidateeCorrectionEtSuppressionSynchronisees` |
+| 5. Ancien lot vs version récente | **Défaut** : dernier arrivé gagnait | Versions par ticket / clôture / lot | `ancienLotNEcrasePasUneVersionPlusRecente` |
+
+### Résultats
+
+**Derby** : suite complète OLPOS 143 tests réussis ; portail 15 tests réussis ;
+vérification de bout en bout (`PortalEndToEnd`) : tout concordant.
+
+**MySQL 8.0.46** (instance de test isolée sur ce PC : dossier de données
+séparé, port 3417, base `olpos_test`, utilisateur dédié, mots de passe
+aléatoires stockés localement hors dépôt ; Docker était installé mais son
+moteur n'était pas démarré) :
+
+* tests portail côté caisse (`PortalSyncRegressionTest`,
+  `PortalTillIntegrationTest`, `TicketSaveTest`) : 15 réussis ;
+* `PortalEndToEnd` : base créée avec le script officiel MySQL, vente espèces,
+  vente carte, remboursement, clôture (code de la caisse), synchronisation,
+  connexion du patron vérifiée par la caisse, **arrêt complet de MySQL** (vente
+  refusée, envoi reporté), **redémarrage** (reconnexion automatique, nouvelle
+  vente, aucun doublon), dates, fuseau et montants identiques ticket par
+  ticket : tout concordant ;
+* la vraie caisse OLPOS (interface) démarre sur cette base MySQL.
+
+Pour relancer ces tests sur MySQL :
+`mvn test -Dtest=Portal*Test -Dolpos.test.db=mysql -Dolpos.test.mysql.file=<fichier d'accès local>`.
+Les garde-fous refusent toute base qui ne s'appelle pas `olpos_test…`, hors
+`127.0.0.1`, ou sur le port 3306.
+
+### À savoir
+
+* Les dates sont stockées dans le fuseau de Java (`DATETIME` MySQL sans
+  fuseau) ; caisse et portail les lisent pareil. Sur ce PC, Java place
+  `America/Vancouver` une heure plus tard que Windows (règle de fuseau
+  différente, déjà connue) : la caisse, la base et le portail restent
+  cohérents entre eux.
+* Si une caisse est réassociée au **même** restaurant avec une base **remise à
+  zéro**, le portail garde l'historique de l'ancienne base (rien n'est effacé
+  automatiquement).
+* MySQL non testé sous Linux ; les noms de tables des requêtes du portail sont
+  en minuscules comme le script officiel.
+
+---
+
 ## 6. Limites connues
 
 * Pour **créer un restaurant ou un code d'association**, le portail doit être

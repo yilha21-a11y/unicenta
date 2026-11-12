@@ -191,6 +191,54 @@ public class PortalServerTest {
         assertEquals(3L, s.get("ticketCount"));
     }
 
+    // ================================================================== versions (audit)
+
+    static Map<String, Object> versioned(FakeTill t, long seq, Map<String, Object>... tickets) {
+        Map<String, Object> b = batch(tickets);
+        b.put("rid", t.rid);
+        b.put("seq", seq);
+        return b;
+    }
+
+    @Test
+    public void ancienLotNEcrasePasUneVersionPlusRecente() throws Exception {
+        long ts = today + 16 * 3600_000L;
+        assertEquals(200, a.sync(versioned(a, 2000, FakeTill.ticket("t-v", ts, 50, 0, "Alice", "Menu", "Plats", 1,
+                50.0, "cash"))).statusCode());
+        // lot plus ANCIEN arrive ensuite (ex. renvoye apres une coupure) : ignore
+        assertEquals(200, a.sync(versioned(a, 1000, FakeTill.ticket("t-v", ts, 50, 0, "Alice", "Menu", "Plats", 1,
+                10.0, "cash"))).statusCode());
+        String c = session(a, "mdp-alice");
+        Map<String, Object> t = (Map<String, Object>) call("GET", "/api/patron/tickets/t-v", c, null).json().get("ticket");
+        assertEquals(55.0, d(t.get("total")), 0.001);
+        // suppression plus ancienne : ignoree ; plus recente : appliquee
+        Map<String, Object> del = versioned(a, 1500);
+        del.put("deletedTickets", List.of("t-v"));
+        a.sync(del);
+        assertEquals(200, call("GET", "/api/patron/tickets/t-v", c, null).status);
+        Map<String, Object> del2 = versioned(a, 3000);
+        del2.put("deletedTickets", List.of("t-v"));
+        a.sync(del2);
+        assertEquals(404, call("GET", "/api/patron/tickets/t-v", c, null).status);
+        // version plus recente : appliquee
+        assertEquals(200, a.sync(versioned(a, 4000, FakeTill.ticket("t-v", ts, 50, 0, "Alice", "Menu", "Plats", 1,
+                20.0, "cash"))).statusCode());
+        t = (Map<String, Object>) call("GET", "/api/patron/tickets/t-v", c, null).json().get("ticket");
+        assertEquals(22.0, d(t.get("total")), 0.001);
+    }
+
+    @Test
+    public void lotDUnAutreRestaurantRefuse() throws Exception {
+        // la caisse A presente un lot marque pour le restaurant B : refuse, rien n'est enregistre
+        Map<String, Object> l = versioned(b, 5000, FakeTill.ticket("t-x", today + 3600_000L, 77, 0, "X", "Intrus",
+                "Plats", 1, 999.0, "cash"));
+        assertEquals(409, a.sync(l).statusCode());
+        String ca = session(a, "mdp-alice");
+        String cb = session(b, "mdp-bob");
+        assertEquals(404, call("GET", "/api/patron/tickets/t-x", ca, null).status);
+        assertEquals(404, call("GET", "/api/patron/tickets/t-x", cb, null).status);
+    }
+
     // ================================================================== statistiques
 
     @Test

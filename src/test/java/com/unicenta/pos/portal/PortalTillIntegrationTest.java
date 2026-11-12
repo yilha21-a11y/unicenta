@@ -56,7 +56,7 @@ public class PortalTillIntegrationTest {
     public static void preparer() throws Exception {
         File root = new File(".").getCanonicalFile();
         work = new File(root, "build/test-work/portal-till");
-        env = TestEnvironment.create(new File(work, "env"), true, 0, null, root);
+        env = TestDatabases.create(new File(work, "env-" + TestDatabases.kind()), root);
         AppConfig config = new AppConfig(env.configFile);
         config.load();
         session = AppViewConnection.createSession(config);

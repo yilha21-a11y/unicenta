@@ -647,11 +647,11 @@ public class CustomersPayment extends javax.swing.JPanel implements JPanelView, 
             ticket.setDate(new Date());
             ticket.setCustomer(customerext);
 
-            try {
-                dlsales.saveTicket(ticket, app.getInventoryLocation());
-            } catch (BasicException eData) {
-                MessageInf msg = new MessageInf(MessageInf.SGN_NOTICE, AppLocal.getIntString("message.nosaveticket"), eData);
-                msg.show(this);
+            // OLPOS : rien n'est imprime ni considere comme paye si l'enregistrement echoue
+            if (!com.unicenta.pos.sales.TicketSave.save(() -> dlsales.saveTicket(ticket, app.getInventoryLocation()),
+                    eData -> new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.nosaveticket"),
+                            eData).show(this))) {
+                return;
             }
 
 
@@ -725,11 +725,11 @@ public class CustomersPayment extends javax.swing.JPanel implements JPanelView, 
                 ticket.setDate(new Date());
                 ticket.setCustomer(customerext);
 
-                try {
-                    dlsales.saveTicket(ticket, app.getInventoryLocation());
-                } catch (BasicException eData) {
-                    MessageInf msg = new MessageInf(MessageInf.SGN_NOTICE, AppLocal.getIntString("message.nosaveticket"), eData);
-                    msg.show(this);
+                // OLPOS : rien n'est imprime ni considere comme paye si l'enregistrement echoue
+                if (!com.unicenta.pos.sales.TicketSave.save(() -> dlsales.saveTicket(ticket, app.getInventoryLocation()),
+                        eData -> new MessageInf(MessageInf.SGN_WARNING, AppLocal.getIntString("message.nosaveticket"),
+                                eData).show(this))) {
+                    return;
                 }
 
                 CustomerInfoExt c;

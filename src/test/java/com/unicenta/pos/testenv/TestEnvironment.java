@@ -101,10 +101,76 @@ public final class TestEnvironment {
         public String waiterPassword;
     }
 
+    /** Base MySQL de TEST (instance isolee) ; voir {@link #checkMySqlTarget}. */
+    public static final class MySql {
+        public final String host;
+        public final int port;
+        public final String database;
+        public final String user;
+        public final String password;
+
+        public MySql(String host, int port, String database, String user, String password) {
+            this.host = host;
+            this.port = port;
+            this.database = database;
+            this.user = user;
+            this.password = password;
+        }
+
+        public String url() {
+            return "jdbc:mysql://" + host + ":" + port + "/";
+        }
+    }
+
     public static Result create(File dir, boolean reset, int apiPort, String password, File projectRoot) throws Exception {
+        return create(dir, reset, apiPort, password, projectRoot, null);
+    }
+
+    /**
+     * Garde-fous MySQL : seulement une base dont le nom commence par
+     * "olpos_test", sur 127.0.0.1/localhost, et jamais sur le port 3306
+     * (instance MySQL habituelle de ce PC).
+     */
+    static void checkMySqlTarget(MySql my) {
+        if (!my.database.startsWith("olpos_test")) {
+            throw new IllegalStateException("Refus : la base MySQL de test doit s'appeler olpos_test...");
+        }
+        if (!"127.0.0.1".equals(my.host) && !"localhost".equals(my.host)) {
+            throw new IllegalStateException("Refus : MySQL de test uniquement sur ce PC (127.0.0.1).");
+        }
+        if (my.port == 3306) {
+            throw new IllegalStateException("Refus : le port 3306 est celui de l'instance MySQL habituelle.");
+        }
+    }
+
+    /** Vide la base MySQL de test (toutes ses tables), apres les garde-fous. */
+    static void resetMySql(MySql my) throws Exception {
+        checkMySqlTarget(my);
+        try (Connection c = java.sql.DriverManager.getConnection(my.url() + my.database, my.user, my.password);
+                java.sql.Statement st = c.createStatement()) {
+            List<String> tables = new java.util.ArrayList<>();
+            try (java.sql.ResultSet rs = st.executeQuery("SELECT table_name FROM information_schema.tables"
+                    + " WHERE table_schema = DATABASE()")) {
+                while (rs.next()) {
+                    tables.add(rs.getString(1));
+                }
+            }
+            st.execute("SET FOREIGN_KEY_CHECKS = 0");
+            for (String t : tables) {
+                st.execute("DROP TABLE IF EXISTS `" + t.replace("`", "") + "`");
+            }
+            st.execute("SET FOREIGN_KEY_CHECKS = 1");
+        }
+    }
+
+    public static Result create(File dir, boolean reset, int apiPort, String password, File projectRoot, MySql my)
+            throws Exception {
         File dbDir = new File(dir, "database");
         File configFile = new File(dir, CONFIG_NAME);
 
+        if (my != null) {
+            resetMySql(my);   // garde-fous inclus
+        }
         refuseProductionDatabase(dbDir);
         // poste de test active (licence de test, cle generee pour cette execution)
         com.unicenta.pos.license.TestLicenses.installValidForTests(new File(dir.getParentFile(), "licence-test"));
@@ -130,13 +196,25 @@ public final class TestEnvironment {
         AppConfig config = new AppConfig(configFile);
         config.load(); // fichier absent -> valeurs par defaut de AppConfig
         // uniCenta 5.0 : pilote Derby du depot Maven ; URL = db.URL + db.schema + db.options
-        config.setProperty("db.driverlib", derbyJar().getAbsolutePath());
-        config.setProperty("db.driver", "org.apache.derby.jdbc.EmbeddedDriver");
-        config.setProperty("db.URL", "jdbc:derby:" + dbDir.getAbsolutePath().replace(File.separatorChar, '/') + ";create=true");
-        config.setProperty("db.schema", "");
-        config.setProperty("db.options", "");
-        config.setProperty("db.user", "");
-        config.setProperty("db.password", "");
+        if (my == null) {
+            config.setProperty("db.driverlib", derbyJar().getAbsolutePath());
+            config.setProperty("db.driver", "org.apache.derby.jdbc.EmbeddedDriver");
+            config.setProperty("db.URL", "jdbc:derby:" + dbDir.getAbsolutePath().replace(File.separatorChar, '/') + ";create=true");
+            config.setProperty("db.schema", "");
+            config.setProperty("db.options", "");
+            config.setProperty("db.user", "");
+            config.setProperty("db.password", "");
+        } else {
+            // MySQL : meme forme que l'ecran de configuration d'uniCenta (URL + schema + options)
+            config.setProperty("db.engine", "MySQL");
+            config.setProperty("db.driverlib", mysqlJar().getAbsolutePath());
+            config.setProperty("db.driver", "com.mysql.cj.jdbc.Driver");
+            config.setProperty("db.URL", my.url());
+            config.setProperty("db.schema", my.database);
+            config.setProperty("db.options", "?zeroDateTimeBehavior=convertToNull");
+            config.setProperty("db.user", my.user);
+            config.setProperty("db.password", my.password);
+        }
         config.setProperty("machine.hostname", "TEST-POS");
         config.setProperty("machine.ticketsbag", "restaurant");
         // Imprimantes : tout s'affiche a l'ecran tant que le materiel n'est pas connu.
@@ -199,7 +277,7 @@ public final class TestEnvironment {
             {"cat-plats", "Plats"},
             {"cat-boissons", "Boissons"},
         };
-        try (PreparedStatement ps = c.prepareStatement("INSERT INTO CATEGORIES(ID, NAME, CATSHOWNAME) VALUES (?, ?, 1)")) {
+        try (PreparedStatement ps = c.prepareStatement("INSERT INTO categories(ID, NAME, CATSHOWNAME) VALUES (?, ?, 1)")) {
             for (String[] cat : categories) {
                 ps.setString(1, cat[0]);
                 ps.setString(2, cat[1]);
@@ -219,7 +297,7 @@ public final class TestEnvironment {
         try (PreparedStatement ps = c.prepareStatement(
                 "INSERT INTO products(ID, REFERENCE, CODE, NAME, PRICEBUY, PRICESELL, CATEGORY, TAXCAT, PRINTTO) "
                 + "VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)");
-             PreparedStatement pc = c.prepareStatement("INSERT INTO PRODUCTS_CAT(PRODUCT, CATORDER) VALUES (?, ?)")) {
+             PreparedStatement pc = c.prepareStatement("INSERT INTO products_cat(PRODUCT, CATORDER) VALUES (?, ?)")) {
             int order = 0;
             for (Object[] p : products) {
                 ps.setString(1, (String) p[0]);
@@ -239,7 +317,7 @@ public final class TestEnvironment {
         }
         String waiterId = UUID.randomUUID().toString();
         try (PreparedStatement ps = c.prepareStatement(
-                "INSERT INTO PEOPLE(ID, NAME, APPPASSWORD, ROLE, VISIBLE) VALUES (?, ?, ?, '2', 1)")) {
+                "INSERT INTO people(ID, NAME, APPPASSWORD, ROLE, VISIBLE) VALUES (?, ?, ?, '2', 1)")) {
             ps.setString(1, waiterId);
             ps.setString(2, waiterName);
             ps.setString(3, Hashcypher.hashString(waiterPassword));
@@ -294,6 +372,11 @@ public final class TestEnvironment {
     }
 
     /** Jar du pilote Derby utilise par les tests (depot Maven local). */
+    static File mysqlJar() throws Exception {
+        return new File(Class.forName("com.mysql.cj.jdbc.Driver").getProtectionDomain()
+                .getCodeSource().getLocation().toURI());
+    }
+
     static File derbyJar() throws Exception {
         return new File(org.apache.derby.jdbc.EmbeddedDriver.class.getProtectionDomain()
                 .getCodeSource().getLocation().toURI());

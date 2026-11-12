@@ -174,40 +174,65 @@ public final class PortalService {
 
     /**
      * Lot envoye par la caisse. Un meme {@code batchId} n'est jamais applique
-     * deux fois ; un ticket deja recu est remplace (meme identifiant).
+     * deux fois. Chaque lot porte une version {@code seq} croissante : un
+     * ticket, une cloture ou une suppression n'est appliquee que si elle est
+     * PLUS RECENTE que ce que le portail connait deja. Un lot destine a un autre
+     * restaurant est refuse.
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> sync(String rid, Map<String, Object> body) throws SQLException, PortalError {
         String batchId = str(body, "batchId");
+        if (body.get("rid") != null && !rid.equals(body.get("rid"))) {
+            throw new PortalError(409, "wrong_restaurant", "Lot destine a un autre restaurant : refuse.");
+        }
+        long seq = body.get("seq") == null ? 0 : num(body.get("seq")).longValue();
         Map<String, Object> meta = body.get("meta") instanceof Map ? (Map<String, Object>) body.get("meta") : null;
+        boolean[] latest = {true};
         boolean duplicate = db.tx(() -> {
             if (db.one("SELECT batch_id FROM batches WHERE rid = ? AND batch_id = ?", rid, batchId) != null) {
                 return true;
             }
             db.update("INSERT INTO batches (rid, batch_id, received) VALUES (?, ?, ?)", rid, batchId, now());
+            Map<String, Object> dev = db.one("SELECT last_seq FROM devices WHERE rid = ?", rid);
+            latest[0] = dev == null || seq >= ((Number) dev.get("last_seq")).longValue();
             for (Object o : list(body.get("tickets"))) {
                 Map<String, Object> t = (Map<String, Object>) o;
                 String id = (String) t.get("id");
+                if (!newer("tickets", "id", rid, id, seq)) {
+                    continue;   // le portail a deja une version plus recente
+                }
                 db.update("DELETE FROM tickets WHERE rid = ? AND id = ?", rid, id);
                 db.update("INSERT INTO tickets (rid, id, ticket_no, ticket_type, ts, person, person_name, money, place,"
-                        + " order_number, base, tax, total, discounts, json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        rid, id, num(t.get("ticketNo")).intValue(), num(t.get("type")).intValue(), num(t.get("ts")).longValue(),
-                        t.get("person"), t.get("personName"), t.get("money"), t.get("place"),
-                        t.get("orderNumber") == null ? null : num(t.get("orderNumber")).intValue(),
-                        num(t.get("base")).doubleValue(), num(t.get("tax")).doubleValue(), num(t.get("total")).doubleValue(),
-                        num(t.get("discounts")).doubleValue(), Json.write(t));
+                        + " order_number, base, tax, total, discounts, json, rev) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        rid, id, num(t.get("ticketNo")).intValue(), num(t.get("type")).intValue(),
+                        num(t.get("ts")).longValue(), t.get("person"), t.get("personName"), t.get("money"),
+                        t.get("place"), t.get("orderNumber") == null ? null : num(t.get("orderNumber")).intValue(),
+                        num(t.get("base")).doubleValue(), num(t.get("tax")).doubleValue(),
+                        num(t.get("total")).doubleValue(), num(t.get("discounts")).doubleValue(), Json.write(t), seq);
+            }
+            for (Object o : list(body.get("deletedTickets"))) {
+                // supprime a la caisse : retire seulement si la suppression est plus recente
+                db.update("DELETE FROM tickets WHERE rid = ? AND id = ? AND rev < ?", rid, String.valueOf(o), seq);
             }
             for (Object o : list(body.get("closures"))) {
                 Map<String, Object> cl = (Map<String, Object>) o;
-                db.update("DELETE FROM closures WHERE rid = ? AND money = ?", rid, cl.get("money"));
-                db.update("INSERT INTO closures (rid, money, host, seq, date_start, date_end, json) VALUES (?,?,?,?,?,?,?)",
-                        rid, cl.get("money"), cl.get("host"), num(cl.get("seq")).intValue(), num(cl.get("start")).longValue(),
-                        cl.get("end") == null ? null : num(cl.get("end")).longValue(), Json.write(cl));
+                String money = String.valueOf(cl.get("money"));
+                if (!newer("closures", "money", rid, money, seq)) {
+                    continue;
+                }
+                db.update("DELETE FROM closures WHERE rid = ? AND money = ?", rid, money);
+                db.update("INSERT INTO closures (rid, money, host, seq, date_start, date_end, json, rev)"
+                        + " VALUES (?,?,?,?,?,?,?,?)", rid, money, cl.get("host"), num(cl.get("seq")).intValue(),
+                        num(cl.get("start")).longValue(), cl.get("end") == null ? null : num(cl.get("end")).longValue(),
+                        Json.write(cl), seq);
             }
-            if (body.get("openOrders") instanceof List) {
+            if (body.get("openOrders") instanceof List && latest[0]) {
                 db.update("DELETE FROM open_orders WHERE rid = ?", rid);
-                db.update("INSERT INTO open_orders (rid, ts, json) VALUES (?, ?, ?)", rid, now(),
-                        Json.write(body.get("openOrders")));
+                db.update("INSERT INTO open_orders (rid, ts, json, rev) VALUES (?, ?, ?, ?)", rid, now(),
+                        Json.write(body.get("openOrders")), seq);
+            }
+            if (latest[0]) {
+                db.update("UPDATE devices SET last_seq = ? WHERE rid = ?", seq, rid);
             }
             return false;
         });
@@ -215,11 +240,17 @@ public final class PortalService {
             db.update("UPDATE devices SET currency = ?, locale = ?, timezone = ?, version = ? WHERE rid = ?",
                     meta.get("currency"), meta.get("locale"), meta.get("timezone"), meta.get("version"), rid);
         }
-        if (body.get("users") instanceof List) {
-            updateUsers(rid, (List<Object>) body.get("users"));
+        if (body.get("users") instanceof List && latest[0] && !duplicate) {
+            updateUsers(rid, (List<Object>) body.get("users"));   // jamais l'etat d'un ancien lot
         }
         db.update("UPDATE devices SET last_sync = ? WHERE rid = ?", now(), rid);
         return Json.obj("status", duplicate ? "duplicate" : "ok");
+    }
+
+    /** Vrai si la version {@code seq} est plus recente que celle enregistree (ou si rien n'est enregistre). */
+    private boolean newer(String table, String key, String rid, String id, long seq) throws SQLException {
+        Map<String, Object> r = db.one("SELECT rev FROM " + table + " WHERE rid = ? AND " + key + " = ?", rid, id);
+        return r == null || seq > ((Number) r.get("rev")).longValue();
     }
 
     /**

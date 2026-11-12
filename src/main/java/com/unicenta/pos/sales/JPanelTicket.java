@@ -1857,15 +1857,21 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
 
             if (executeEvent(ticket, ticketext, "ticket.save") == null) {
 
+              // OLPOS : si l'enregistrement echoue, la commande reste OUVERTE
+              // (pas d'impression du ticket, pas de cloture, table non liberee).
+              boolean saved = TicketSave.save(() -> dlSales.saveTicket(ticket, m_App.getInventoryLocation()),
+                      eData -> new MessageInf(MessageInf.SGN_WARNING,
+                              AppLocal.getIntString("message.nosaveticket"), eData).show(this));
+              if (!saved) {
+                ticket.resetPayments();
+                m_oTicket.resetTaxes();
+                m_oTicket.resetPayments();
+                return false;   // commande gardee telle quelle : rien n'est perdu
+              }
               try {
-                dlSales.saveTicket(ticket, m_App.getInventoryLocation());
                 m_config.setProperty("lastticket.number", Integer.toString(ticket.getTicketId()));
                 m_config.setProperty("lastticket.type", Integer.toString(ticket.getTicketType()));
                 m_config.saveWithExistingProperties();
-
-              } catch (BasicException eData) {
-                MessageInf msg = new MessageInf(MessageInf.SGN_NOTICE, AppLocal.getIntString("message.nosaveticket"), eData);
-                msg.show(this);
               } catch (IOException ex) {
                 log.error(ex.getMessage());
               }
