@@ -60,6 +60,15 @@ public final class PortalAgent {
     private Thread pollThread;
 
     public PortalAgent(PortalLink link, Connection connection, DataLogicSystem dl, Map<String, Object> meta) {
+        this(link, () -> connection, dl, meta);
+    }
+
+    /**
+     * Connexion redemandee a chaque cycle : avec MySQL, une connexion coupee par
+     * le serveur (redemarrage, reseau, wait_timeout) est rouverte automatiquement.
+     */
+    public PortalAgent(PortalLink link, PortalExporter.ConnectionSource connection, DataLogicSystem dl,
+            Map<String, Object> meta) {
         this.link = link;
         this.exporter = new PortalExporter(connection);
         this.auth = new PortalAuthenticator(link, dl, System::currentTimeMillis);

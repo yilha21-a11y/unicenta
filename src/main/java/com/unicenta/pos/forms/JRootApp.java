@@ -666,7 +666,7 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
       m_portalSession = AppViewConnection.createAdditionalSession(m_props);
       DataLogicSystem dl = new DataLogicSystem();
       dl.init(m_portalSession);
-      m_portalAgent = new com.unicenta.pos.portal.PortalAgent(m_portalLink, m_portalSession.getConnection(), dl,
+      m_portalAgent = new com.unicenta.pos.portal.PortalAgent(m_portalLink, m_portalSession::getConnection, dl,
               portalMeta());
       m_portalAgent.start();
     } catch (Exception e) {

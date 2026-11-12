@@ -29,16 +29,29 @@ public final class PortalExporter {
 
     static final int MAX_TICKETS = 300;
 
-    private final Connection c;
+    /** Fournit une connexion valide (MySQL : reconnexion si le serveur a coupe). */
+    public interface ConnectionSource {
+        Connection get() throws SQLException;
+    }
+
+    private final ConnectionSource source;
 
     public PortalExporter(Connection c) {
-        this.c = c;
+        this(() -> c);
+    }
+
+    public PortalExporter(ConnectionSource source) {
+        this.source = source;
+    }
+
+    private Connection c() throws SQLException {
+        return source.get();
     }
 
     /** Tickets encaisses apres le curseur (date, identifiant), dans l'ordre. */
     public List<Object> ticketsAfter(long cursorTs, String cursorId) throws SQLException {
         List<Object> out = new ArrayList<>();
-        try (PreparedStatement ps = c.prepareStatement("SELECT r.ID, r.DATENEW, r.MONEY, r.ATTRIBUTES, t.TICKETTYPE,"
+        try (PreparedStatement ps = c().prepareStatement("SELECT r.ID, r.DATENEW, r.MONEY, r.ATTRIBUTES, t.TICKETTYPE,"
                 + " t.TICKETID, t.PERSON, p.NAME FROM receipts r JOIN tickets t ON r.ID = t.ID"
                 + " LEFT JOIN people p ON t.PERSON = p.ID WHERE r.DATENEW > ? OR (r.DATENEW = ? AND r.ID > ?)"
                 + " ORDER BY r.DATENEW, r.ID")) {
@@ -76,7 +89,7 @@ public final class PortalExporter {
         boolean refund = ((Long) t.get("type")) == 1L;
         List<Object> lines = new ArrayList<>();
         double discounts = 0;
-        try (PreparedStatement ps = c.prepareStatement("SELECT tl.LINE, tl.PRODUCT, tl.UNITS, tl.PRICE, tl.ATTRIBUTES,"
+        try (PreparedStatement ps = c().prepareStatement("SELECT tl.LINE, tl.PRODUCT, tl.UNITS, tl.PRICE, tl.ATTRIBUTES,"
                 + " pr.NAME, ca.NAME, tx.RATE FROM ticketlines tl LEFT JOIN products pr ON tl.PRODUCT = pr.ID"
                 + " LEFT JOIN categories ca ON pr.CATEGORY = ca.ID LEFT JOIN taxes tx ON tl.TAXID = tx.ID"
                 + " WHERE tl.TICKET = ? ORDER BY tl.LINE")) {
@@ -100,7 +113,7 @@ public final class PortalExporter {
         double base = 0;
         double tax = 0;
         List<Object> taxes = new ArrayList<>();
-        try (PreparedStatement ps = c.prepareStatement("SELECT tx.NAME, tl.BASE, tl.AMOUNT FROM taxlines tl"
+        try (PreparedStatement ps = c().prepareStatement("SELECT tx.NAME, tl.BASE, tl.AMOUNT FROM taxlines tl"
                 + " LEFT JOIN taxes tx ON tl.TAXID = tx.ID WHERE tl.RECEIPT = ?")) {
             ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -112,7 +125,7 @@ public final class PortalExporter {
             }
         }
         List<Object> payments = new ArrayList<>();
-        try (PreparedStatement ps = c.prepareStatement("SELECT PAYMENT, TOTAL, TIP FROM payments WHERE RECEIPT = ?")) {
+        try (PreparedStatement ps = c().prepareStatement("SELECT PAYMENT, TOTAL, TIP FROM payments WHERE RECEIPT = ?")) {
             ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -132,7 +145,7 @@ public final class PortalExporter {
     /** Clotures de caisse terminees apres {@code afterEnd}, plus la caisse en cours. */
     public List<Object> closures(long afterEnd) throws SQLException {
         List<Object> out = new ArrayList<>();
-        try (PreparedStatement ps = c.prepareStatement("SELECT MONEY, HOST, HOSTSEQUENCE, DATESTART, DATEEND, NOSALES"
+        try (PreparedStatement ps = c().prepareStatement("SELECT MONEY, HOST, HOSTSEQUENCE, DATESTART, DATEEND, NOSALES"
                 + " FROM closedcash WHERE DATEEND IS NULL OR DATEEND > ? ORDER BY DATESTART")) {
             ps.setTimestamp(1, new Timestamp(afterEnd));
             try (ResultSet rs = ps.executeQuery()) {
@@ -150,7 +163,7 @@ public final class PortalExporter {
     /** Commandes en cours (tables ouvertes, non encaissees). */
     public List<Object> openOrders() throws SQLException {
         List<Object> out = new ArrayList<>();
-        try (PreparedStatement ps = c.prepareStatement("SELECT s.ID, s.CONTENT, p.NAME FROM sharedtickets s"
+        try (PreparedStatement ps = c().prepareStatement("SELECT s.ID, s.CONTENT, p.NAME FROM sharedtickets s"
                 + " LEFT JOIN places p ON s.ID = p.ID");
                 ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
