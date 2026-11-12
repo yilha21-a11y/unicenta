@@ -188,26 +188,32 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
   }
 
 
+  private final LoginScreen loginScreen = new LoginScreen();   // OLPOS
+
   public JRootApp() {
 
     m_aBeanFactories = new HashMap<>();
 
     initComponents();
     jScrollPane1.getVerticalScrollBar().setPreferredSize(new Dimension(30, 30));
-    // OLPOS : acces a l'ecran Activation / Licence depuis l'ecran de connexion
+    serverMonitor.setVisible(false);
+    // OLPOS : ecran de connexion (code genere par NetBeans inchange, contenu remplace ici)
+    // - presentation courte au centre, mentions detaillees dans "A propos / Licences"
+    // - panneau "Connexion" (utilisateurs, Quitter) + bouton Activation / Licence
+    jPanel4.removeAll();
+    jPanel4.setLayout(new java.awt.BorderLayout());
+    jPanel4.add(loginScreen.hero(), java.awt.BorderLayout.CENTER);
     javax.swing.JButton licenseButton = new javax.swing.JButton(AppLocal.getIntString("Menu.License"));
+    licenseButton.setFont(new java.awt.Font("Arial", 0, 12));
     licenseButton.setFocusable(false);
+
     licenseButton.addActionListener(e -> {
       com.unicenta.pos.license.LicenseService s = com.unicenta.pos.license.LicenseService.current();
       if (s != null) {
         com.unicenta.pos.license.LicenseDialog.open(this, s);
       }
     });
-    poweredby.getParent().add(licenseButton, java.awt.BorderLayout.LINE_START);
-    serverMonitor.setVisible(false);
-    // Identite OLPOS (code genere par NetBeans inchange)
-    jLabel1.setIcon(Branding.icon(Branding.LOGO));
-    jLabel1.setText(Branding.aboutHtml());
+    LoginScreen.styleUserPanel(jPanel5, licenseButton, m_jClose);
     poweredby.setIcon(Branding.icon(Branding.LOGO_SMALL));
     poweredby.setToolTipText(Branding.NAME + " " + Branding.VERSION + " - version d\u00e9riv\u00e9e d'" + Branding.DERIVED_FROM);
     webMemoryBar1.setShowMaximumMemory(true);
@@ -549,34 +555,26 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
     m_jHost.setText("<html>" + m_props.getHost() + " - " + sWareHouse + "<br>" + url);
 
 
+    // OLPOS : start.logo / start.text (Configuration > General) personnalisent
+    // l'ecran de connexion ; vides ou absents => presentation OLPOS (jamais
+    // l'ancienne longue description). Les mentions de licence restent dans
+    // "A propos / Licences" et la ligne d'avis du bas de l'ecran.
     String newLogo = m_props.getProperty("start.logo");
-    if (newLogo != null) {
-      if ("".equals(newLogo)) {
-        jLabel1.setIcon(Branding.icon(Branding.LOGO));   // OLPOS
-      } else {
-        jLabel1.setIcon(new javax.swing.ImageIcon(newLogo));
-      }
+    if (newLogo != null && !newLogo.trim().isEmpty() && new File(newLogo.trim()).isFile()) {
+      loginScreen.setLogo(new javax.swing.ImageIcon(newLogo.trim()));
+    } else {
+      loginScreen.setLogo(Branding.icon(Branding.LOGO));
     }
-
     String newText = m_props.getProperty("start.text");
-    if (newText != null) {
-      if (newText.equals("")) {
-        jLabel1.setText(Branding.aboutHtml());   // OLPOS
-
-      } else {
-        try {
-          String newTextCode = new Scanner(new File(newText)
-                  , "UTF-8").useDelimiter("\\A").next();
-          jLabel1.setText(newTextCode);
-        } catch (FileNotFoundException e) {
-        }
-
-        jLabel1.setAlignmentX(0.5F);
-        jLabel1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        jLabel1.setMaximumSize(new java.awt.Dimension(800, 1024));
-        jLabel1.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+    String customText = null;
+    if (newText != null && !newText.trim().isEmpty()) {
+      try {
+        customText = new Scanner(new File(newText.trim()), "UTF-8").useDelimiter("\\A").next();
+      } catch (FileNotFoundException | java.util.NoSuchElementException e) {
+        log.warn("start.text illisible : {}", newText);
       }
     }
+    loginScreen.setDescription(customText);
 
     showLogin();
 
