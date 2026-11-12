@@ -106,6 +106,8 @@ public final class TestEnvironment {
         File configFile = new File(dir, CONFIG_NAME);
 
         refuseProductionDatabase(dbDir);
+        // poste de test active (licence de test, cle generee pour cette execution)
+        com.unicenta.pos.license.TestLicenses.installValidForTests(new File(dir.getParentFile(), "licence-test"));
 
         if (dbDir.exists()) {
             if (!reset) {

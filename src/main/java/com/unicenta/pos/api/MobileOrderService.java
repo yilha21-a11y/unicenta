@@ -211,6 +211,13 @@ final class MobileOrderService {
             throw replaced(tableId, tableName, snap);
         }
 
+        // OLPOS : licence => pas de NOUVELLE vente (une commande commencee peut etre terminee)
+        if ((snap == null || snap.getTicket().getLinesCount() == 0)
+                && !com.unicenta.pos.license.LicenseService.allowsNewSales()) {
+            throw new ApiServer.ApiError(403, "license_new_sales_blocked", "Nouvelle vente impossible : "
+                    + com.unicenta.pos.license.LicenseService.currentEvaluation().getMessage()
+                    + " Rien n'a ete enregistre.");
+        }
         TicketInfo ticket = snap == null ? new TicketInfo() : snap.getTicket();
         if (snap == null) {
             // comme a la caisse : le nom de la commande commence par le serveur

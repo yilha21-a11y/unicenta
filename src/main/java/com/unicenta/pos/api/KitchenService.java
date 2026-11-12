@@ -155,6 +155,10 @@ public final class KitchenService {
             throw new ApiServer.ApiError(403, "forbidden", "Permission d'envoi en cuisine requise ("
                     + PERMISSION_TILL + ").");
         }
+        if (!com.unicenta.pos.license.LicenseService.allowsForOpenOrders(com.olpos.license.License.FEATURE_KITCHEN)) {
+            throw new ApiServer.ApiError(403, "license_kitchen", "Envoi en cuisine non autorise par la licence : "
+                    + com.unicenta.pos.license.LicenseService.currentEvaluation().getMessage());
+        }
         if (printer == null) {
             throw new ApiServer.ApiError(503, "kitchen_printing_unavailable", "Impression cuisine indisponible sur cette caisse.");
         }

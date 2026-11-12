@@ -419,6 +419,26 @@
   </dependencies>
   <build>
     <plugins>
+      <!-- OLPOS : code de licence commun avec OLPOS License Manager (license-core) -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>olpos-license-core</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.basedir}/license-core/src/main/java</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <!-- OLPOS : les tests n'utilisent jamais %LOCALAPPDATA%\OLPOS5 ni l'installation uniCenta -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

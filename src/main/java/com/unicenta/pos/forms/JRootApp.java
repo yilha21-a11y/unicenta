@@ -194,6 +194,16 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
 
     initComponents();
     jScrollPane1.getVerticalScrollBar().setPreferredSize(new Dimension(30, 30));
+    // OLPOS : acces a l'ecran Activation / Licence depuis l'ecran de connexion
+    javax.swing.JButton licenseButton = new javax.swing.JButton(AppLocal.getIntString("Menu.License"));
+    licenseButton.setFocusable(false);
+    licenseButton.addActionListener(e -> {
+      com.unicenta.pos.license.LicenseService s = com.unicenta.pos.license.LicenseService.current();
+      if (s != null) {
+        com.unicenta.pos.license.LicenseDialog.open(this, s);
+      }
+    });
+    poweredby.getParent().add(licenseButton, java.awt.BorderLayout.LINE_START);
     serverMonitor.setVisible(false);
     // Identite OLPOS (code genere par NetBeans inchange)
     jLabel1.setIcon(Branding.icon(Branding.LOGO));
@@ -505,6 +515,14 @@ public class JRootApp extends JPanel implements AppView, DeviceMonitorEventListe
     if (!"false".equals(m_props.getProperty("olpos.ordernumber.templates"))) {
       com.unicenta.pos.sales.OrderNumberTemplates.run(m_dlSystem);
     }
+    // OLPOS : licence (verification locale, voir LicenseService) puis services
+    com.unicenta.pos.license.LicenseService license =
+            com.unicenta.pos.license.LicenseService.forTill(AppConfig.getDataDir(), m_dlSystem);
+    com.unicenta.pos.license.LicenseService.install(license);
+    license.refresh();
+    new javax.swing.Timer(60_000, e -> license.refresh()).start();   // jamais de fenetre pendant un encaissement
+    SwingUtilities.invokeLater(() -> com.unicenta.pos.license.LicenseNotices.atStartup(this, license));
+
     // OLPOS : envoi cuisine (caisse + telephones) et acces telephone
     startOlposServices();
 

@@ -759,6 +759,19 @@ public abstract class JPanelTicket extends JPanel implements JPanelView, BeanFac
    * @param oLine
    */
   protected void addTicketLine(TicketLineInfo oLine) {
+    // OLPOS : licence absente, invalide ou expiree => pas de NOUVELLE vente
+    // (une commande deja commencee peut etre terminee et encaissee)
+    if (m_oTicket != null && m_oTicket.getLinesCount() == 0
+            && !com.unicenta.pos.license.LicenseService.allowsNewSales()) {
+      com.olpos.license.LicenseEvaluation le = com.unicenta.pos.license.LicenseService.currentEvaluation();
+      int r = JOptionPane.showOptionDialog(this, "Nouvelle vente impossible : " + le.getMessage(),
+              "OLPOS - Licence", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null,
+              new Object[] {"Activation / Licence...", "Fermer"}, "Fermer");
+      if (r == 0 && com.unicenta.pos.license.LicenseService.current() != null) {
+        com.unicenta.pos.license.LicenseDialog.open(this, com.unicenta.pos.license.LicenseService.current());
+      }
+      return;
+    }
     if (executeEventAndRefresh("ticket.addline", new ScriptArg("line", oLine)) == null) {
       if (oLine.isProductCom()) {
         int i = m_ticketlines.getSelectedIndex();

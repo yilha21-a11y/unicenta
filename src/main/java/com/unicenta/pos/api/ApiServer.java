@@ -424,12 +424,21 @@ public final class ApiServer {
                 return Json.obj("users", data.listMobileUsers());
             case "/auth/login":
                 requireMethod(method, "POST");
+                if (!com.unicenta.pos.license.LicenseService.allowsForOpenOrders(com.olpos.license.License.FEATURE_MOBILE)) {
+                    throw new ApiError(403, "license_mobile", "Prise de commande sur telephone non autorisee par la "
+                            + "licence : " + com.unicenta.pos.license.LicenseService.currentEvaluation().getMessage());
+                }
                 return login(ex);
             default:
                 break;
         }
 
         // ---------- adresses protegees
+        // OLPOS : la licence doit comprendre la prise de commande sur telephone
+        if (!com.unicenta.pos.license.LicenseService.allowsForOpenOrders(com.olpos.license.License.FEATURE_MOBILE)) {
+            throw new ApiError(403, "license_mobile", "Prise de commande sur telephone non autorisee par la licence : "
+                    + com.unicenta.pos.license.LicenseService.currentEvaluation().getMessage());
+        }
         ApiSessions.ApiSession session = authenticate(ex);
         switch (route) {
             case "/auth/logout":

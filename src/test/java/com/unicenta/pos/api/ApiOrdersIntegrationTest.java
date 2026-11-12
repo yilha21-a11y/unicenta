@@ -500,4 +500,35 @@ public class ApiOrdersIntegrationTest {
         assertEquals(400, sansId.status);
         assertEquals("invalid_base_order_id", sansId.errorCode());
     }
+
+    @Test
+    public void expirationPuisRenouvellementSansPerteDeDonnees() throws Exception {
+        assertEquals(200, api.changes(token, "14", rid(), 0, add("p-cafe", 1, null)).status);   // commande en cours
+        com.unicenta.pos.license.LicenseService valid = com.unicenta.pos.license.LicenseService.current();
+        java.util.concurrent.atomic.AtomicReference<java.time.Instant> clock =
+                new java.util.concurrent.atomic.AtomicReference<>(java.time.Instant.now());
+        com.unicenta.pos.license.LicenseService s = com.unicenta.pos.license.TestLicenses.service(
+                new java.io.File("build/test-work/licence-expiree-" + System.nanoTime()), null, clock::get, "TEST");
+        java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneOffset.UTC);
+        try {
+            s.install(com.unicenta.pos.license.TestLicenses.code(com.unicenta.pos.license.TestLicenses.license(
+                    "OLP-EXPI-EXPI-EXPI-EXPI-0", 1, today.minusDays(40), today.minusDays(1), 0, null)));
+            com.unicenta.pos.license.LicenseService.install(s);
+            // nouvelle vente refusee, rien d'enregistre
+            ApiTestClient.Response r = api.changes(token, "15", rid(), 0, add("p-cafe", 1, null));
+            assertEquals(403, r.status);
+            assertEquals("license_new_sales_blocked", r.errorCode());
+            assertNull(tillStore.load("15"));
+            // la commande deja commencee peut etre terminee
+            Map<String, Object> o = api.getOrder(token, "14").order();
+            assertEquals(200, api.changes(token, "14", rid(), version(o), add("p-the", 1, null)).status);
+            // renouvellement : nouvelles ventes de nouveau possibles, donnees intactes
+            s.install(com.unicenta.pos.license.TestLicenses.code(com.unicenta.pos.license.TestLicenses.license(
+                    "OLP-EXPI-EXPI-EXPI-EXPI-0", 2, today.minusDays(1), today.plusDays(365), 0, null)));
+            assertEquals(200, api.changes(token, "15", rid(), 0, add("p-cafe", 1, null)).status);
+            assertEquals(2, lines(api.getOrder(token, "14").order()).size());
+        } finally {
+            com.unicenta.pos.license.LicenseService.install(valid);
+        }
+    }
 }
